@@ -1,0 +1,376 @@
+<apex:page standardController="Contract" showHeader="false" sidebar="false"  docType="html-5.0" applyBodyTag="false" applyHtmlTag="false" renderAs="PDF">
+    <head>
+        <style type="text/css">
+        @page { 
+    size: letter portrait;
+            margin-top: 2.0cm;
+            margin-left: 2.0cm;
+            margin-bottom: 3.0cm; 
+    
+    @top-left {
+        content: element(header_left);
+    }
+    
+    @top-center {
+        content: element(header_center);
+    }
+    
+    @top-right {
+        content: element(header_right);
+    }
+    
+    @bottom-center{  
+        content:  element(footer_center);
+        }  
+
+}
+
+.header_left {
+    text-align: left;
+    position: running(header_left);
+}
+
+.header_center{
+    text-align: center;
+    position: running(header_center);
+}
+
+.header_right {
+    text-align: right;
+    position: running(header_right);
+}
+
+.footer_center {
+    text-align: center;
+    position: running(footer_center);
+}
+
+.pageNumber:before {
+    content: counter(page); 
+}
+
+.pageCount:before {
+    content: counter(pages);  
+}
+    
+      
+ </style>
+</head>
+<body>
+
+   <div align="left" class="header_left">
+        <apex:image value="{!$Resource.Logo_Harmoney}" width="200"/>
+    </div>
+    <div align="right" class="header_right"  style="font-size:10px;">
+        Contrato de préstamo Personal Pequeño
+    </div>
+    <div align="center" class="footer_center" style="font-size:10px;">
+        <table width="100%" border ="0">
+            <tr>
+                <td align="left" width="50%">Versión de 27 de enero de 2022</td>
+                <td width="35%"></td>
+                <td  align="right" width="15%"></td>
+            </tr>
+            <tr>
+                <td colspan="3"><HR/></td>  
+            </tr>
+            <tr>
+                <td align="left" style="vertical-align: top;">
+                    525 AVE. ROOSEVELT,<br/>
+                    LA TORRE DE PLAZA LAS AMÉRICAS,<br/>
+                    SUITE 115, SAN JUAN, 00918
+               </td>
+               <td align="left" style="vertical-align: top;">
+                    US  855  803  3330<br/>
+                    PR  787  522  8183
+               </td>
+               <td align="left" style="vertical-align: top;">
+                    info@harmoneysolutions.com
+               </td>
+            </tr>
+        </table>
+    </div>
+
+    <div style="text-align:center"><h2>CONTRATO DE PRÉSTAMO PERSONAL PEQUEÑO</h2></div>
+    
+    <div align="justify">
+    <b>DE LA PRIMERA PARTE:</b> Harmoney Limited Liability Company, una compañía organi-zada y existente bajo las leyes de Puerto Rico y autorizada 
+        por la Oficina del Comisio-nado de Instituciones Financieras para ofrecer préstamos personales pequeños, en adelante denominada “Harmoney” o 
+        “Acreedora” o “Prestamista”, representada en este acto por <b>YAHAIRIE TAPIA, Gerente</b>.
+    </div>
+    <br/>
+    <div align="justify"><p>
+    <b>DE LA SEGUNDA PARTE</b>: {!Contract.Account.Name}, mayor de edad, {!if(Contract.Account.SM_Marital_Status__pc ="Single","Soltero(a)","otra")} y residente del Municipio de
+        {!Contract.BillingCity}, Puerto Rico, en adelante denominado “Cliente”
+        o “Prestatario”. Para propósitos de este Contrato, el término “el Cliente” se refiere a individuos o personas naturales indistintamente de su 
+        sexo e identidad de género. De igual forma, en este Contrato la utilización del pronombre el o sujeto él, incluirá el pronombre la o el sujeto ella, y viceversa.</p>
+
+        <p>Los comparecientes manifiestan y aseguran que tienen plena capacidad para otorgar y firmar este Contrato, y que así deciden hacerlo libre y voluntariamente. 
+        Los compa-recientes suscriben este Contrato sujeto a los siguientes términos y condiciones:</p>
+        <ol>
+        <li><p><b>Cantidad del Préstamo.</b>– El Cliente ha solicitado, y Harmoney ha acordado ofrecer al Cliente un préstamo por la cantidad principal de $ <u>{!Contract.SM_Loan_Principal__c}</u> (“principal”).
+         El Cliente se obliga y compromete a restituir a Harmoney esa cantidad más los intereses y cargos correspondientes de conformidad con los términos y condiciones de este Contrato. 
+         </p></li>
+        <li><p>Declaración bajo el Reglamento Núm. 5782 de la Oficina del Comisionado de Instituciones Financieras y el Truth in Lending Act:
+        
+         <table width="100%" border ="1">
+            <tr>
+                <td width="25%" valign="top" style="text-align:center; font-size: 0.75em;">
+                    CANTIDAD PRESTADA<br/>(principal)
+                </td>
+                <td width="25%" valign="top" style="text-align:center; font-size: 0.75em;">
+                    TASA DE POR CIENTO ANUAL aplicable a este préstamo<br/>(interés simple)
+                </td>
+                <td width="25%" valign="top" style="text-align:center; font-size: 0.75em;">
+                CARGO POR FINANCIAMIENTO o cantidad en dólares que le costará el crédito
+                </td>
+                <td width="25%" valign="top" style="text-align:center; font-size: 0.75em;">
+                TOTAL A PAGAR o cantidad que habrá pagado el Cliente al terminar de pagar todos los plazos
+                </td>
+           </tr>
+           <tr>
+                <td valign="top" style="text-align:center; font-size: 1.25em;">
+                    $ <u>{!Contract.SM_Loan_Principal__c}</u>
+                </td>
+                <td valign="top" style="text-align:center; font-size: 1.25em;">
+                    <u>{!Contract.SM_InterestRate__c}</u> %
+                </td>
+                <td valign="top" style="text-align:center; font-size: 1.25em;">
+                    $ <u>{!Contract.SM_Loan_Interest__c}</u>
+                </td>
+                <td valign="top" style="text-align:center; font-size: 1.25em;">
+                    $ <u>{!Contract.SM_Total_RC__c}</u>
+                </td>
+           </tr>
+           <tr>
+               <td colspan="4" style="text-align:center; font-size: 1.25em;">Programa de pagos a plazos </td>
+           </tr>
+           <tr>
+                <td valign="top" style="text-align:center; font-size: 0.75em;">
+                    NÚMERO DE PLAZOS
+                </td>
+                <td valign="top" style="text-align:center; font-size: 0.75em;">
+                    CANTIDAD A PAGAR POR EL CLIENTE EN CADA PLAZO
+                </td>
+                <td colspan="2" valign="top" style="text-align:center; font-size: 0.75em;">
+                    VENCIMIENTO DE LOS PLAZOS
+                </td>
+           </tr>
+           <tr>
+                <td valign="top" style="text-align:center; font-size: 1.25em;">
+                   <u>
+                    <apex:outputText value="{0, number, ###}">
+                        <apex:param value="{!Contract.SM_Plan_Months__c}"/>
+                    </apex:outputText>
+                </u>
+                </td>
+                <td valign="top" style="text-align:center; font-size: 1.25em;">
+                    $ <u>{!Contract.SM_Net_Monthly_offer__c}</u>
+                </td>
+                <td colspan="2" valign="top" style="text-align:center; font-size: 1.25em;">
+                    El día 10 de cada mes comenzando el 
+                    <u>{!day(Contract.SM_Start_date__c)} de
+                    {!CASE(MONTH(Contract.SM_Start_date__c),
+                        1, "enero",
+                        2, "febrero",
+                        3, "marzo", 
+                        4, "abril", 
+                        5, "mayo", 
+                        6, "junio",
+                        7, "julio",
+                        8, "agosto",
+                        9, "septiembre",
+                        10, "octubre",
+                        11, "noviembre",
+                        12, "diciembre",
+                        "None")} de
+                    {!year(Contract.SM_Start_date__c)}</u>
+                </td>
+           </tr>
+           <tr>
+               <td colspan="4" style="text-align:center; font-size: 1.25em;">
+               El plazo final por la cantidad de $ <u>{!Contract.SM_Total_RC__c}</u> deberá ser pagado en o antes del:
+                <u>{!day(Contract.SM_Loan_Maturity_Date__c)} de
+                    
+                    {!CASE(MONTH(Contract.SM_Loan_Maturity_Date__c),
+                        1, "enero",
+                        2, "febrero",
+                        3, "marzo", 
+                        4, "abril", 
+                        5, "mayo", 
+                        6, "junio",
+                        7, "julio",
+                        8, "agosto",
+                        9, "septiembre",
+                        10, "octubre",
+                        11, "noviembre",
+                        12, "diciembre",
+                        "None")} de
+                    {!year(Contract.SM_Loan_Maturity_Date__c)}</u>
+
+               </td>
+           </tr>
+           <tr>
+               <td colspan="4" style="text-align:justify; font-size: 1.25em;">
+                   <b>Cargo por demora:</b> Todo pago de plazo mensual vencido y no pagado luego del día 10 de cada mes, conllevará un cargo de 3% del monto del plazo.
+               </td>
+           </tr>
+           <tr>
+               <td colspan="4" style="text-align:justify; font-size: 1.25em;">
+                   <b>Saldo por anticipado:</b> Si el Cliente paga toda su deuda antes de su vencimiento, el Cliente no tendrá que pagar una penalidad.
+               </td>
+           </tr>
+           <tr>
+               <td colspan="4" style="text-align:justify; font-size: 1.25em;">
+                    <b>Información adicional:</b> Véase los términos y condiciones de este Contrato.
+               </td>
+          </tr>
+
+         </table>
+         </p></li>
+         <li><p>
+            <b>Aplicación de pagos.</b> – Todos los pagos que efectúe el Cliente serán aplicados, en primer término, a los intereses devengados y el restante al principal. 
+        </p></li>
+       <li><p>
+           <b>Cómo efectuar los pagos.</b> – El Cliente efectuará los pagos a través de medios electrónicos, de conformidad con las alternativas, directrices y guías que Harmoney establezca y notifique al Cliente por escrito.
+       </p></li>
+       <li><p>
+           <b>Acuse de recibo de los pagos.</b> – La Prestamista enviará o entregará al Cliente una confirmación del recibo por todo pago que se haga a cuenta del préstamo.
+       </p></li> 
+       <li><p><b>Saldo por anticipado.</b> – Si el Cliente repaga la totalidad del préstamo antes de&nbsp; 
+           <apex:outputText value="{0,date,dd/MM/yyyy}">
+                <apex:param value="{!Contract.SM_Loan_Maturity_Date__c}" />                                         
+            </apex:outputText>
+            (fecha de su vencimiento), <b>no tendrá que pagar penalidad alguna, con excepción de los cargos o penalidades 
+           impuestos por atrasos o incumplimientos ocurridos previo al saldo por anticipado,</b> y Harmoney no le cobrará la porción 
+           de intereses correspondientes a los plazos no vencidos que sean pagados por adelantado. De igual forma, si el Cliente 
+           hiciera pagos parciales por adelantado, Harmoney no le cobrará la porción de intereses correspondientes a los plazos no 
+           vencidos que sean pagados por adelantado. 
+         </p></li>
+         <li><p><b>Seguro.</b> – A su libre opción, el Cliente:
+         <dd>____ Desea que Harmoney obtenga un seguro de crédito al consumidor que asegure, sujeto a los términos y condiciones de la póliza y las 
+         disposiciones de ley aplicables, el pago del préstamo en determinadas circunstancias. La obtención de ese seguro no conlleva costo adicional 
+         alguno al Cliente. <b>Harmoney ofrece el seguro de crédito al consumidor sobre una base voluntaria y el Cliente no está obligado en forma alguna
+          a acogerse a este seguro.</b></dd>
+         <dd>____ No desea que Harmoney obtenga un seguro de crédito al consumidor.</dd>
+         </p></li>
+        <li><p><b>Incumplimiento y aceleración.</b> – Cualquiera de los siguientes eventos tendrá el efecto de acelerar el repago total de este préstamo, 
+        causará el vencimiento y exigibilidad inmediata para pago la totalidad del balance del préstamo así como los cargos e intereses, y activará el 
+        derecho de la Prestamista para reclamar y exigir al Cliente el pago de dichas cantidades, sin necesidad de que la Prestamista tenga que efectuar 
+        notificación previa al Cliente. Si la Prestamista deja de hacer uso de este derecho ello no constituirá ni podrá ser interpretado como una renuncia 
+        para el ejercicio de este derecho.</p>
+
+        <ol style="list-style-type:lower-alpha">
+            <li>Los eventos que causarán la aceleración de acelerar el vencimiento de la cantidad total adeudada y el derecho de la Prestamista de reclamar así el pago de la totalidad del préstamo son:
+            <dd>
+                <ol style="list-style-type:lower-roman">
+                      <li>El incumplimiento del Cliente con el pago oportuno de cualquier plazo mensual, o de cualquier parte del principal o de los intereses, a su vencimiento a tenor con este Contrato. </li>
+                      <li>Cualquier otro incumplimiento del Cliente con los términos y condiciones de este Contrato.   </li>
+             </ol>
+             </dd>
+            </li>
+           </ol>
+
+        </li>
+        <li><p><b>Gastos de litigio.</b>– En el caso de que Harmoney tenga que instar cualquier reclamación o procedimiento judicial en contra del Cliente para 
+         reclamar sus derechos bajo este Contrato, todos los gastos, costos de litigio, incluyendo los honorarios de abogados, en que incurra Harmoney, serán por cuenta y cargo del Cliente.   
+        </p></li>
+        <li><p><b>Deber de agotar procedimiento de resolución de disputas.</b> – En caso de que el Cliente tenga alguna queja o reclamo en relación con este Contrato y el cumplimiento de Harmoney con 
+            éste, deberá exponer su queja o reclamo por escrito y notificarla a Harmoney mediante correo electrónico a <b>{!Contract.SM_Email_to_send_contract__c}.</b> Harmoney llevará a cabo una investigación sobre el 
+            asunto planteado por el Cliente y, en un término de 30 días, enviará una respuesta al Cliente con el resultado de su investigación y el curso de acción, si alguno, que tomará Harmoney
+             para atender la queja o reclamo del Cliente. Si la complejidad del asunto, de los eventos o de la investigación lo ameritan, Harmoney podrá extender el término para notificar una 
+             respuesta por un término de 30 días adicionales. El Cliente agotará este proceso de resolución de disputas antes de acudir a cualquier foro adjudicativo.  
+        </p>
+        </li>
+        <li><p><b>No renuncia.</b> – Si el Harmoney dejase de reclamar o exigir el cabal cumplimiento con los deberes y obligaciones establecidas en este Contrato, dicha conducta no podrá constituir ni podrá ser interpretada como una modificación de, ni como una renuncia o relevo a, los términos de este Contrato.
+        </p></li>
+        <li><p><b>Información personal y de contacto.</b> – El Cliente asegura y certifica que la información personal que proveyó a Harmoney en los documentos referentes a su solicitud de préstamo es información correcta y vigente a la fecha de la firma de este Contrato. De haber cualquier cambio en la dirección residencia, dirección postal, dirección de correo electrónico, número de teléfono o estatus civil del Cliente, en o antes de diez (10) días de haber ocurrido el cambio, el Cliente deberá notificar por escrito a Harmoney sobre el referido cambio y proveer la información actualizada. Toda notificación sobre el cambio en la información personal o de contacto, deberá ser enviada por el Cliente a Harmoney mediante correo electrónico a <b>{!Contract.SM_Email_to_send_contract__c}.</b> 
+        </p></li>
+        <li><p><b>Ley aplicable y selección de foro.</b> – Este contrato será interpretado conforme a las leyes del Estado Libre Asociado de Puerto Rico y cualquier reclamación en relación con este Contrato se presentará y será atendida, en primera instancia, por la Sala de San Juan del Tribunal de Primera Instancia del Estado Libre Asociado de Puerto Rico. 
+        </p></li>
+        <li><p><b>(14) Separabilidad.</b>– Las partes acuerdan que las cláusulas y condiciones de este Contrato son independientes y separadas unas de las otras y que la nulidad o invalidez de una o más cláusulas no afectará la validez de las demás, las cuales se mantendrán válidas y vigentes.  Si cualquier palabra, frase, oración, párrafo, inciso, sección, subsección, cláusula o parte de este contrato fuera impugnada por cualquier razón ante un tribunal y declarada inconstitucional, inválida o nula, tal sentencia o dictamen no afectará, menoscabará o invalidará las restantes
+           disposiciones y partes de este Contrato, sino que su efecto se limitará a la palabra, frase, oración, párrafo, inciso, sección, subsección, cláusula o parte así declarada. 
+        </p></li>
+        <li><p><b>Único acuerdo; enmiendas por escrito.</b> –  Este Contrato constituye el único acuerdo entre las partes sobre este préstamo y deja sin efecto cualquier otro acuerdo, negociación, expresión o entendido previo, sean verbales o por escrito, en relación con el préstamo.  Las partes convienen, además, que el presente Contrato solamente podrá ser enmendado mediante documento escrito firmado por ambas partes
+        </p></li>
+        <li><p><b>Cláusulas. </b>–  Los nombres o títulos de las cláusulas de este Contrato tienen el único objetivo de facilitar el manejo de este Contrato. Dichos títulos no podrán ser utilizados para definir o interpretar el contenido de las cláusulas ni los derechos y obligaciones de las partes bajo este Contrato.
+        </p></li>
+        
+        
+        </ol>
+    </div> 
+    <div>
+    Ambas partes manifiestan que han leído y entendido todo el contenido del presente Contrato y así lo aceptan por encontrar que el mismo está redactado a su entera satisfacción y que éste establece fielmente lo pactado.
+    </div> 
+    <br/> <br/> 
+    <div>
+    <b>PARA QUE ASÍ CONSTE,</b> las partes suscriben el presente Contrato.<br/> <br/> 
+
+        En 525 Ave. Roosevelt, Suite 1115, San Juan, Puerto Rico, La Torre De Plaza Las Americas,  
+        
+        el {!day(Contract.StartDate)} de
+                    
+                    {!CASE(MONTH(Contract.StartDate),
+                        1, "enero",
+                        2, "febrero",
+                        3, "marzo", 
+                        4, "abril", 
+                        5, "mayo", 
+                        6, "junio",
+                        7, "julio",
+                        8, "agosto",
+                        9, "septiembre",
+                        10, "octubre",
+                        11, "noviembre",
+                        12, "diciembre",
+                        "None")} de
+                    {!year(Contract.StartDate)}
+        
+    .
+    </div>
+      
+    <br/> <br/>
+    <div>
+    <table width="90%" style="border:1px;margin-left:auto;margin-right:auto;">
+        <tr style="border:0px">
+            <td width="45%">
+                Por Harmoney LLC:
+                
+            </td>
+            <td  width="10%">
+                &nbsp;
+            </td>
+            <td width="45%">
+                Por el Cliente:
+            </td>
+        </tr>
+        <tr >
+            <td height="60px" style="border-bottom:1pt solid black;">
+                &nbsp;
+            </td>
+            <td >
+                &nbsp;
+            </td>
+            <td  style="border-bottom:1pt solid black;">
+                &nbsp;
+            </td>
+        </tr>
+        <tr >
+            <td style="text-align:center;">
+                YAHAIRIE TAPIA <br/>
+                Gerente
+            </td>
+            <td >
+                &nbsp;
+            </td>
+            <td style="text-align:center;">
+                {!Contract.Account.name}
+            </td>
+        </tr>
+    </table> 
+  </div>
+      
+
+    </body>
+
+</apex:page>

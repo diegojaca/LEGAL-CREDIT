@@ -1,0 +1,53 @@
+<!--
+  @File Name          : sM_UploadCloudDocumentsLWC.html
+  @Description        : 
+  @Author             : cjimenez@legal-credit.com
+  @Group              : 
+  @Last Modified By   : cjimenez@legal-credit.com
+  @Last Modified On   : 17/11/2020, 3:23:30 p. m.
+  @Modification Log   : 
+  Ver       Date            Author      		    Modification
+  1.0    17/11/2020   cjimenez@legal-credit.com     Initial Version
+-->
+<template>
+  <div style="position: relative">
+   
+    <template if:true={showSpinner} >
+ 
+    <lightning-spinner alternative-text="Loading" size="large" style="position: absolute" variant="brand" ></lightning-spinner>
+ 
+    </template>
+
+  <!-- PAGE HEADER -->
+  <div class="slds-page-header">
+    <!-- LAYOUT GRID -->
+    <div class="slds-grid">
+      <!-- GRID COL -->
+      <div class="slds-col slds-has-flexi-truncate">
+        <!-- HEADING AREA -->
+        <lightning-card title="Upload File" icon-name="custom:custom19"></lightning-card>
+      </div>
+      <!-- ACTION BUTTONS -->
+      <!-- / ACTION BUTTONS -->
+    </div>
+    <div class="slds-grid slds-wrap">
+      <div class="slds-col slds-size_12-of-12">
+        <lightning-combobox name="progress" label="Document Type" onchange={handleChangeDocumentType}
+          placeholder="Select an Option" options={optionsTypeDocument} value={documentType} required>
+        </lightning-combobox>
+
+        <lightning-input label="" name="file uploader" onchange={getSelectedFiles} type="file"></lightning-input>
+        <div class="slds-text-body_small slds-text-color_success">
+          {fileName}
+        </div>
+        <br />
+
+        <div class="slds-float_right">
+          <lightning-button class="slds-m-top--medium" label="Save" onclick={createCloudDocumentLwc} variant="brand">
+          </lightning-button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</template>

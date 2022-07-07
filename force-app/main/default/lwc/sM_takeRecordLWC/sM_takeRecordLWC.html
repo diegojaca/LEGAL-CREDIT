@@ -1,0 +1,10 @@
+<template>
+    <template if:true={showSpinner}>
+        <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+    </template>
+    <div class="slds-box slds-box_small">
+        <lightning-button variant="brand" label={Label.TAKE_RECORD_TITLE} title={Label.TAKE_RECORD_TITLE} onclick={changeRecordOwner} 
+                            style="width: 100%;" class="stretchButton slds-button slds-button_brand">
+        </lightning-button>
+    </div>
+</template>

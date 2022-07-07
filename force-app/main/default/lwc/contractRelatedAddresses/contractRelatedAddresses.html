@@ -1,0 +1,26 @@
+<!--
+  @description       : 
+  @author            : Jonathan S. Pachon Ariza -> jpachon@legal-credit.com
+  @group             : 
+  @last modified on  : 03-08-2021
+  @last modified by  : Jonathan S. Pachon Ariza -> jpachon@legal-credit.com
+  Modifications Log 
+  Ver   Date         Author                                                 Modification
+  1.0   03-06-2021   Jonathan S. Pachon Ariza -> jpachon@legal-credit.com   Initial Version
+-->
+<template>
+    <lightning-card title="Addresses" icon-name="standard:address">
+        <div class="slds-box slds-p-around_none slds-m-top_x-small slds-m-horizontal_none">
+            <lightning-layout multiple-rows>
+                <template for:each={fieldsAndValues} for:item="item">
+                    <lightning-layout-item  key={item.Id} size="6" flexibility="auto">
+                        <div class="custom-box slds-box slds-text-align_center slds-p-top_none">
+                            <p>{item.Label}: </p>
+                            <c-look-up selected-id={item.Id} selected-name={item.Name} account-id={item.AccountId} address-type={item.Label} search-placeholder="" icon-name="standard:address" onlookupselected={handleSelection} onremoveselected={handleRemove}> </c-look-up>
+                        </div>
+                    </lightning-layout-item>
+                </template>
+            </lightning-layout>
+        </div>
+    </lightning-card>
+</template>

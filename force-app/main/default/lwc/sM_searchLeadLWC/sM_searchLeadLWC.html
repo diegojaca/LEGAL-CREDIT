@@ -1,0 +1,59 @@
+<!--
+  @description       : 
+  @author            : diego.jacanamijoy@gmail.com
+  @group             : 
+  @last modified on  : 12-21-2020
+  @last modified by  : diego.jacanamijoy@gmail.com
+  Modifications Log 
+  Ver   Date         Author                     Modification
+  1.0   11-25-2020   diego.jacanamijoy@gmail.com   Initial Version
+-->
+<template>
+    <!-- Init Spinner-->
+    <template if:true={showSpinner}>
+        <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
+    </template>
+    <!-- End Spinner-->
+
+    <!-- Init New Lead form-->
+    <template if:false={viewDuplicates}>
+        <lightning-record-edit-form object-api-name={leadObject} onsuccess={handleSuccess} onsubmit={handleSubmit}>
+            <lightning-messages></lightning-messages>
+            <div class="slds-m-around_small">
+                <!-- Init Default values -->
+                <lightning-input-field field-name="FirstName"></lightning-input-field>
+                <lightning-input-field field-name="LastName" required></lightning-input-field>
+                <!--<lightning-input-field field-name="Phone"></lightning-input-field>
+                <lightning-input-field field-name="Email"></lightning-input-field>-->
+                <lightning-input-field field-name="LeadSource"></lightning-input-field>
+                <lightning-input-field field-name="SM_Accept_Terms_and_conditions__c"></lightning-input-field>
+                <lightning-input-field field-name="SM_ChannelAcceptanceTerms_and_conditions__c"></lightning-input-field>
+                <lightning-input-field field-name="SM_Destination_business_unit__c" value={destinationSelected} onchange={handleChange} required></lightning-input-field>
+                
+                <!-- End Default values -->
+                <template for:each={requiredFieldsByCompany} for:item="field">
+                    <lightning-input-field field-name={field} key={field} dropdown-alignment="top-left"></lightning-input-field>
+                </template>
+                <div class="slds-align_absolute-center">
+                    <lightning-button style="padding:5px" variant="brand" if:true={destinationSelected} type="submit" name="save" label={label.SAVE_LEAD_BUTTON}></lightning-button>
+                    <lightning-button style="padding:5px" variant="neutral" if:true={destinationSelected} onclick={resetValues} name="save" label={label.CANCEL_BUTTON}></lightning-button>
+                </div>
+            </div>
+        </lightning-record-edit-form>
+    </template>
+    <!-- End New Lead form-->
+    
+    <!-- Duplicate selection init -->
+    <template if:true={viewDuplicates}>
+        <lightning-card title={titleDuplicates} icon-name="custom:custom14">
+            <div style="padding: 10px;">
+                <c-s-m_s-object-list-l-w-c s-object-name={sObjectName} items={items} fields={fields} onprocess={handleProcess}></c-s-m_s-object-list-l-w-c>
+            </div>
+            <div slot="footer">
+                <p>{label.CANCEL_OPTION_TITLE}</p>
+                <button class="slds-button slds-button_neutral" onclick={showNewLeadSuccess} title="Cancel">Cancel</button>
+                <button class="slds-button slds-button_brand" onclick={unifyRecords} title="Unify">Unify</button>
+            </div>
+        </lightning-card>
+    </template>
+</template>

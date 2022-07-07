@@ -1,0 +1,29 @@
+<!--
+  @description       : 
+  @author            : diego.jacanamijoy@gmail.com
+  @group             : 
+  @last modified on  : 12-10-2020
+  @last modified by  : diego.jacanamijoy@gmail.com
+  Modifications Log 
+  Ver   Date         Author                        Modification
+  1.0   12-10-2020   diego.jacanamijoy@gmail.com   Initial Version
+-->
+<template>
+    <lightning-record-view-form record-id={item.Id} object-api-name={sObjectName} density="comfy">
+        <template if:true={fields}>
+            <div class="slds-grid">
+                <input class="slds-m-top_medium slds-m-right_small" 
+                    type="radio" 
+                    id={item.Id} 
+                    value={item.Name}
+                    name="MyOption" 
+                    onchange={handleRadioChange}
+                    checked={isChecked}/>
+                <template for:each={fields} for:item="field">
+                    <lightning-output-field field-name={field} key={field}>
+                    </lightning-output-field>
+                </template>
+            </div>        
+        </template>    
+    </lightning-record-view-form>
+</template>

@@ -1,0 +1,3 @@
+<apex:page standardController="SM_Payment_Method__c" extensions="SM_PaymentMethodCardInfoRedirector" action="{!redirect}">
+
+</apex:page>

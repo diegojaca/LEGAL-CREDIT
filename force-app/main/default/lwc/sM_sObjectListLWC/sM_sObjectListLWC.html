@@ -1,0 +1,15 @@
+<!--
+  @description       : 
+  @author            : diego.jacanamijoy@gmail.com
+  @group             : 
+  @last modified on  : 12-10-2020
+  @last modified by  : diego.jacanamijoy@gmail.com
+  Modifications Log 
+  Ver   Date         Author                        Modification
+  1.0   12-10-2020   diego.jacanamijoy@gmail.com   Initial Version
+-->
+<template>
+    <template for:each={items} for:item="item" class="slds-scrollable">
+        <c-s-m_s-object-item-l-w-c key={item.id} item={item} fields={fields} onprocess={handleProcess} s-object-name={sObjectName}></c-s-m_s-object-item-l-w-c>    
+    </template>
+</template>

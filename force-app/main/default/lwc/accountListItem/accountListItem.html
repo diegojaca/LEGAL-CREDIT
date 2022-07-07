@@ -1,0 +1,70 @@
+<template>
+    <!-- <lightning-card  variant="Narrow"  title="Hello" icon-name="standard:account">
+        <p class="slds-p-horizontal_small">{item.Name}</p>
+    </lightning-card> -->
+
+    <!-- <template if:true={fields}>
+        <lightning-record-form
+            record-id={item.Id}
+            object-api-name="Account"
+            layout-type="Compact"
+            columns="2"
+            fields={fields}
+            mode="view">
+        </lightning-record-form>    
+    </template> -->
+
+    <lightning-record-view-form record-id={item.Id}
+                                object-api-name="Account"
+                                density="comfy">
+        <template if:true={fields}>
+            <div class="slds-grid">
+                <input class="slds-m-top_medium slds-m-right_small" 
+                    type="radio" 
+                    id={item.Id} 
+                    value={item.Name}
+                    name="MyOption" 
+                    onchange={handleRadioChange}
+                    checked={isChecked}/>
+                <template for:each={fields} for:item="field">
+                    <lightning-output-field field-name={field} key={field}>
+                    </lightning-output-field>
+                </template>
+            </div>        
+        </template>    
+    </lightning-record-view-form>  
+
+
+
+    <!-- <lightning-record-view-form record-id={item.Id}
+                                object-api-name="Account"
+                                density="compact">
+        <template if:true={showFields}>
+            <lightning-output-field field-name='Name'>
+            </lightning-output-field>
+            <lightning-output-field field-name='Industry'>
+            </lightning-output-field>
+        </template>    
+    </lightning-record-view-form>  
+    <lightning-record-view-form record-id={item.Id}
+                                object-api-name="Account"
+                                density="comfy">
+        <template if:true={showFields}>
+            <lightning-output-field field-name='Name'>
+            </lightning-output-field>
+            <lightning-output-field field-name='Industry'>
+            </lightning-output-field>
+        </template>    
+    </lightning-record-view-form>    
+    <lightning-record-view-form record-id={item.Id}
+                                object-api-name="Account"
+                                density="auto">
+        <template if:true={showFields}>
+            <lightning-output-field field-name='Name'>
+            </lightning-output-field>
+            <lightning-output-field field-name='Industry'>
+            </lightning-output-field>
+        </template>    
+    </lightning-record-view-form>     -->
+    <div class="slds-border_bottom"></div>
+</template>

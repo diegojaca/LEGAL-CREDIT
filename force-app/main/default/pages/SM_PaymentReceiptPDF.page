@@ -1,0 +1,127 @@
+<!--
+  @description       :
+  @author            : Jonathan S. Pachon Ariza -> jpachon@legal-credit.com
+  @group             :
+  @last modified on  : 06-15-2021
+  @last modified by  : Jonathan S. Pachon Ariza -> jpachon.ariza@gmail.com
+  Modifications Log
+  Ver   Date         Author                                                 Modification
+  1.0   05-01-2021   Jonathan S. Pachon Ariza -> jpachon@legal-credit.com   Initial Version
+-->
+<apex:page renderAs="PDF" applyBodyTag="false" applyHtmlTag="true" controller="SM_PaymentReceiptPDFController">
+<!-- <apex:page applyBodyTag="true" controller="SM_PaymentReceiptPDFController"> -->
+    <head>
+        <style>
+            @page { margin: 0.25in; size: 5in 6in; }
+        </style>
+    </head>
+        <div style="text-align:center;">
+            <apex:image value="{!URLFOR($Resource.LCS_Logo)}" style="align:center"/>
+        </div>
+    <br/>
+    <body>
+        <table>
+            <tr>
+                <th>Nombre cliente:</th>
+                <td>{!payment.SM_Contract__r.Account.Name}</td>
+            </tr>
+            <tr>
+                <th>Email:</th>
+                <td>{!payment.SM_Contract__r.SM_Email_to_send_contract__c}</td>
+            </tr>
+            <tr>
+                <th>N. Contracto:</th>
+                <td>{!payment.SM_Contract__r.ContractNumber}</td>
+            </tr>
+            <tr style="display:{!IF(isCreditCard,'','None')}">
+                <th>T. Credito:</th>
+                <td>{!payment.SM_Payment_Method__r.SM_Credit_Card_Number__c}</td>
+            </tr>
+            <tr style="display:{!IF(isCreditCard,'None','')}">
+                <th>ACH:</th>
+                <td>{!payment.SM_Payment_Method__r.SM_ACH_Account_Number__c}</td>
+            </tr>
+            <tr>
+                <th>Fecha de Pago:</th>
+                <td>
+                    <apex:outputText value="{0, Date, MM/dd/YYYY}">
+                        <apex:param value="{!payment.SM_Payment_Date__c}"/>
+                    </apex:outputText>
+                </td>
+            </tr>
+            <tr>
+                <th>Valor:</th>
+                <td>
+                    <apex:outputText value="{0, Number, Currency}">
+                        <apex:param value="{!payment.SM_Amount__c}"/>
+                    </apex:outputText>
+                </td>
+            </tr>
+            <tr>
+                <th>Resultado:</th>
+                <td>{!result}</td>
+            </tr>
+        </table>
+
+        <table style="font-family:arial,helvetica,sans-serif;" role="presentation" cellpadding="0" cellspacing="0" width="100%" border="">
+            <tbody>
+                <tr>
+                    <td style="overflow-wrap:break-word;word-break:break-word;padding:50px 80px 0px;font-family:arial,helvetica,sans-serif;" align="center">
+
+                        <div align="center">
+                            <div style="display: table; max-width:234px;">
+                                <table align="left" border="0" cellspacing="0" cellpadding="0" width="32" height="32" style="border-collapse: collapse;table-layout: fixed;border-spacing: 0;mso-table-lspace: 0pt;mso-table-rspace: 0pt;vertical-align: top;margin-right: 15px">
+                                    <tbody><tr style="vertical-align: top"><td align="left" valign="middle" style="word-break: break-word;border-collapse: collapse !important;vertical-align: top">
+                                        <a href="https://www.facebook.com/LCSolutionCompany/" title="Facebook" target="_blank">
+                                            <img src="{!URLFOR($Resource.btn_facebook)}" alt="Facebook" title="Facebook" width="32" style="outline: none;text-decoration: none;-ms-interpolation-mode: bicubic;clear: both;display: block !important;border: none;height: auto;float: none;max-width: 32px !important"/>
+                                        </a>
+                                        </td></tr>
+                                    </tbody></table>
+                                <table align="left" border="0" cellspacing="0" cellpadding="0" width="32" height="32" style="border-collapse: collapse;table-layout: fixed;border-spacing: 0;mso-table-lspace: 0pt;mso-table-rspace: 0pt;vertical-align: top;margin-right: 15px">
+                                    <tbody><tr style="vertical-align: top"><td align="left" valign="middle" style="word-break: break-word;border-collapse: collapse !important;vertical-align: top">
+                                        <a href="https://www.instagram.com/legalcreditsolutions/" title="Instagram" target="_blank">
+                                            <img src="{!URLFOR($Resource.btn_instagram)}" alt="Instagram" title="Instagram" width="32" style="outline: none;text-decoration: none;-ms-interpolation-mode: bicubic;clear: both;display: block !important;border: none;height: auto;float: none;max-width: 32px !important"/>
+                                        </a>
+                                        </td></tr>
+                                    </tbody></table>
+                                <table align="left" border="0" cellspacing="0" cellpadding="0" width="32" height="32" style="border-collapse: collapse;table-layout: fixed;border-spacing: 0;mso-table-lspace: 0pt;mso-table-rspace: 0pt;vertical-align: top;margin-right: 15px">
+                                    <tbody><tr style="vertical-align: top"><td align="left" valign="middle" style="word-break: break-word;border-collapse: collapse !important;vertical-align: top">
+                                        <a href="https://www.linkedin.com/company/legalcreditsolutons/" title="LinkedIn" target="_blank">
+                                            <img src="{!URLFOR($Resource.btn_linkedin)}" alt="LinkedIn" title="LinkedIn" width="32" style="outline: none;text-decoration: none;-ms-interpolation-mode: bicubic;clear: both;display: block !important;border: none;height: auto;float: none;max-width: 32px !important"/>
+                                        </a>
+                                        </td></tr>
+                                    </tbody></table>
+                                <table align="left" border="0" cellspacing="0" cellpadding="0" width="32" height="32" style="border-collapse: collapse;table-layout: fixed;border-spacing: 0;mso-table-lspace: 0pt;mso-table-rspace: 0pt;vertical-align: top;margin-right: 15px">
+                                    <tbody><tr style="vertical-align: top"><td align="left" valign="middle" style="word-break: break-word;border-collapse: collapse !important;vertical-align: top">
+                                        <a href="https://twitter.com/legalcreditpr" title="Twitter" target="_blank">
+                                            <img src="{!URLFOR($Resource.btn_twitter)}" alt="Twitter" title="Twitter" width="32" style="outline: none;text-decoration: none;-ms-interpolation-mode: bicubic;clear: both;display: block !important;border: none;height: auto;float: none;max-width: 32px !important"/>
+                                        </a>
+                                        </td></tr>
+                                    </tbody></table>
+                                <table align="left" border="0" cellspacing="0" cellpadding="0" width="32" height="32" style="border-collapse: collapse;table-layout: fixed;border-spacing: 0;mso-table-lspace: 0pt;mso-table-rspace: 0pt;vertical-align: top;margin-right: 0px">
+                                    <tbody><tr style="vertical-align: top"><td align="left" valign="middle" style="word-break: break-word;border-collapse: collapse !important;vertical-align: top">
+                                        <a href="https://www.youtube.com/user/legalcreditpr" title="Youtube" target="_blank">
+                                            <img src="{!URLFOR($Resource.btn_youtube)}" alt="Youtube" title="Youtube" width="32" style="outline: none;text-decoration: none;-ms-interpolation-mode: bicubic;clear: both;display: block !important;border: none;height: auto;float: none;max-width: 32px !important"/>
+                                        </a>
+                                        </td></tr>
+                                    </tbody></table>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table style="font-family:arial,helvetica,sans-serif;" role="presentation" cellpadding="0" cellspacing="0" width="100%" border="0">
+            <tbody>
+                <tr>
+                    <td style="overflow-wrap:break-word;word-break:break-word;padding:10px 10px 15px;font-family:arial,helvetica,sans-serif;" align="left">
+                        <div style="color: #000000; line-height: 180%; text-align: center; word-wrap: break-word;">
+                            <p style="font-size: 14px; line-height: 180%;">Copyright &copy;2006-2021 Legal Credit Solutions Inc.</p><p>&copy;All rights reserved.</p>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </body>
+</apex:page>

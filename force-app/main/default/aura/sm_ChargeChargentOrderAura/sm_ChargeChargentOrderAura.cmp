@@ -1,0 +1,13 @@
+<!--
+  @description       :
+  @author            : Jonathan S. Pachon Ariza -> jpachon.ariza@gmail.com
+  @group             :
+  @last modified on  : 07-13-2021
+  @last modified by  : Jonathan S. Pachon Ariza -> jpachon.ariza@gmail.com
+  Modifications Log
+  Ver   Date         Author                                                Modification
+  1.0   07-13-2021   Jonathan S. Pachon Ariza -> jpachon.ariza@gmail.com   Initial Version
+-->
+<aura:component implements="flexipage:availableForAllPageTypes,force:hasRecordId" access="global">
+    <c:sm_ChargeChargentOrderLWC recordId="{!v.recordId}" onrefreshview="{!c.refreshview}"></c:sm_ChargeChargentOrderLWC>
+</aura:component>

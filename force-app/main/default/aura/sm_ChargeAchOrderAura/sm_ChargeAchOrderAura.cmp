@@ -1,0 +1,13 @@
+<!--
+  @description       : 
+  @author            : Diego Jacanamijoy -> diego.jacanamijoy@gmail.es
+  @group             : 
+  @last modified on  : 06/07/2021g
+  @last modified by  : Diego Jacanamijoy -> diego.jacanamijoy@gmail.es
+  Modifications Log 
+  Ver   Date          Author                                            Modification
+  1.0   06/07/2021g   Diego Jacanamijoy -> diego.jacanamijoy@gmail.es   Initial Version
+-->
+<aura:component implements="flexipage:availableForAllPageTypes,force:hasRecordId" access="global">
+    <c:sm_ChargeAchOrderLWC recordId="{!v.recordId}" onrefreshview="{!c.refreshview}"></c:sm_ChargeAchOrderLWC>
+</aura:component>

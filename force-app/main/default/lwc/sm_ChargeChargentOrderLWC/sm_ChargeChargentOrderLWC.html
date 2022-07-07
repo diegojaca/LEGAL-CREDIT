@@ -1,0 +1,20 @@
+<!--
+  @description       :
+  @author            : Jonathan S. Pachon Ariza -> jpachon.ariza@gmail.com
+  @group             :
+  @last modified on  : 07-12-2021
+  @last modified by  : Jonathan S. Pachon Ariza -> jpachon.ariza@gmail.com
+  Modifications Log
+  Ver   Date         Author                                                Modification
+  1.0   07-01-2021   Jonathan S. Pachon Ariza -> jpachon.ariza@gmail.com   Initial Version
+-->
+<template>
+    <template if:true={showSpinner}>
+        <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+    </template>
+    <div class="slds-box slds-box_small">
+        <lightning-button variant="brand" label='Charge' title={label.CHARGUE_BUTTON_TITTLE} onclick={chargeOrderHandle}
+                            style="width: 100%;" class="stretchButton slds-button slds-button_brand">
+        </lightning-button>
+    </div>
+</template>

@@ -1,0 +1,5 @@
+<template>
+    <template for:each={items} for:item="item" class="slds-scrollable">
+        <c-account-list-item key={item.IdSobj} item={item} fields={fields} onprocess={handleProcess}></c-account-list-item>
+    </template>    
+</template>

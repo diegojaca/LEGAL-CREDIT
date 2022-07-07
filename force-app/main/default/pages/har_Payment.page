@@ -1,0 +1,911 @@
+<!--/**********************************************************************************************************
+Author:             Carlos A. Lopez P.
+Project's name:     Legal Credit -Harmoney
+Description:        Pagina para generación de Reporte de Pagos Harmoney.
+
+Changes (Versions)
+-----------------------------------------------------------------------------------------------------------
+No.          Date                 Author                               Description
+---------   --------------   ------------------------   ---------------------------------------------------
+1.0        01-Feb-2022      Carlos A. López P.         Creación de la Pagina y la Clase de Controlador
+************************************************************************************************************/ -->
+
+<apex:page showHeader="false" sidebar="false" standardStylesheets="false" standardController="Contract" applyBodyTag="false"
+    applyHtmlTag="false" renderAs="pdf">
+    <!--    contentType="application/vnd.ms-excel#SalesForceExport.xls" > -->
+
+    <head>
+        <meta http-equiv="Content-Type" content="text/html;charset=UTF-8" />
+        <style>
+            @page {
+                size: letter portrait;
+                margin-top: 2.0cm;
+                margin-left: 2.0cm;
+                margin-bottom: 3.0cm;
+
+                @top-left {
+                    content: "HARMONEY";
+                }
+                @top-right {
+                    content: "SUMMARY";
+                }
+                @bottom-center {
+                    content: "Page " counter(page) " of " counter(pages);
+                }
+            }
+
+            body {
+                font-family: gill sans mt, arial;
+                font-size: 14px;
+            }
+
+            table,
+            th {
+                border: 0.5px solid;
+                text-align: left;
+                
+            }
+            
+
+            table {
+                border-collapse: collapse;
+                width: 100%;
+                border: 1px solid black;
+                border-radius: 13px;
+                border-spacing: 0;
+            }
+
+            td {
+                height: 25px;
+                text-align: center;
+                vertical-align: middle;
+                border: 0.5px solid;
+            }
+
+            tr:nth-child(2) {
+                background-color: #E6E6E6;
+                color: black;
+            }
+
+            th {
+                background-color: #E6E6E6;
+                color: black;
+                border-radius: 13px;
+                border-spacing: 0;
+                text-align: center
+            }
+            
+    .bPageBlock .pbBody .dataCol {
+        border:0px;
+    }
+    .bPageBlock .pbBody .labelCol {
+        border:0px;
+    }
+.divTable
+    {
+        width:100%;
+        display:block;
+        height:100%!important;
+        border:0px solid #FFF;
+        vertical-align:middle !important;
+    }
+
+.divRow
+    {
+        border:0px solid #FFF;
+        width:100%;
+        display:table;
+        position:relative;
+        vertical-align:middle !important;
+        line-height: 1.5; 
+        font-size: 18px;
+    }
+
+.divCell
+    {
+        width:49%;
+        display:block;
+        position:relative;
+        float:left;
+        border:0px solid ;
+    }
+ 
+        </style>
+    </head>
+
+    <body>
+    
+       
+        <center>
+            <apex:outputText value="{0, date, MMMM d','  yyyy}">
+                <apex:param value="{!TODAY()}" />
+            </apex:outputText>
+        </center>
+        <apex:pageBlock >
+            <div id="div_Logo" class="divTable">
+                <div id="divRow1" class="divRow">
+                    <div class="divCell" style="text-align:center;" ><apex:image value="{!$Resource.HAR_Logo}" style="border:0px;"/></div>
+                    <div class="divCell" style="text-align:center;" ><br/><b>Loan No. {!Contract.contractNumber}</b></div>
+                </div>
+            </div>
+            <br/>
+<table>
+    <tbody>
+        <tr >
+            <td rowspan="2" style="border: 0px;">&nbsp;</td>
+            <td rowspan="9" width="5%" style="border: 0px;">&nbsp;</td>
+            <td colspan="2" style="text-align:center; background-color:#D0CECE;"><b>LOAN SUMMARY</b></td>
+        </tr>
+        <tr>
+            <td style="width:180px">&nbsp;&nbsp;Original Loan amount</td>
+            <td style="width:80px">
+                <apex:outputText value="{0, number, currency}">
+                    <apex:param value="{!Contract.SM_Loan_Principal__c}" />
+               </apex:outputText>
+            </td>
+        </tr>
+        <tr>
+            <td rowspan="3" style="border: 0px; text-align: left; font-size: 18px;">
+                <b>Harmoney Limited Liability Company</b><br/>
+                200 S Bicayne Blv.<br/>
+                Miami, FL 33131
+            </td>
+            <td>&nbsp;&nbsp;Total Paid to Principal</td>
+            <td>                
+                <apex:outputText value="{0, number, currency}">
+                    <apex:param value="{!Contract.SM_Monthly_offer__c}" />
+               </apex:outputText>
+           </td>
+        </tr>
+        <tr>
+            <td>&nbsp;&nbsp;Total Interest *</td>
+            <td>$100.00</td>
+        </tr>
+        <tr>
+            <td>&nbsp;&nbsp;Total Late Fee</td>
+            <td>            
+                <apex:outputText value="{0, number, currency}">
+                    <apex:param value="{!Contract.SM_Late_payment_fee_collected__c}" />
+               </apex:outputText>
+            </td>
+        </tr>
+        <tr>
+            <td style="border: 0px; text-align: left"></td>
+            <td>&nbsp;&nbsp;Current Balance *</td>
+            <td>
+                <apex:outputText value="{0, number, currency}">
+                    <apex:param value="{!Contract.SM_Monthly_offer__c}"/>
+                 </apex:outputText>
+            </td>
+        </tr>
+        <tr>
+            <td rowspan="3" style="border: 0px; text-align: left; font-size: 18px;">
+                <b>{!Contract.Account.Name}<br/></b>
+                {!Contract.SM_Billing_Address__r.street}<br/>
+                {!Contract.SM_Billing_Address__r.city}, {!Contract.SM_Billing_Address__r.state} {!Contract.SM_Billing_Address__r.postalCode}
+
+            </td>
+            <td>&nbsp;&nbsp;Balance Date <br/><small>(mm/dd/yyyy)</small></td>
+            <td>
+                <apex:outputText value="{0,date,MM'/'dd'/'yyyy}">
+                    <apex:param value="{!ADDMONTHS(DATE(YEAR( TODAY()),1,31),MONTH(TODAY()) -1 )}" />
+                </apex:outputText>
+            </td>
+        </tr>
+        <tr>
+            <td>&nbsp;&nbsp;Status</td>
+            <td>
+                <small>{!Contract.SM_Billing_status__c}</small>
+            </td>
+        </tr>
+        <tr>
+            <td>&nbsp;&nbsp;Maturity Date <br/><small>(mm/dd/yyyy)</small></td>
+            <td>
+                <apex:outputText value="{0,date,MM'/'dd'/'yyyy}">
+                    <apex:param value="{!Contract.SM_Loan_Maturity_Date__c}" />
+                </apex:outputText>
+            </td>
+        </tr>
+    </tbody>
+</table>
+        </apex:pageBlock>
+        <br/>
+        <apex:pageBlock >
+            <apex:variable var="var_BegingBalance" value="{!Contract.SM_Loan_Principal__c}"/>
+            <!-- VARIABLES FIJAS -->
+            <apex:variable var="Var_01" value="{!((1+(Contract.SM_InterestRate__c/100))^Contract.SM_Plan_Months__c)}"/>
+            <apex:variable var="Var_Payment" value="{!var_BegingBalance*((Var_01*(Contract.SM_InterestRate__c/100))/(Var_01-1))}"/>
+            <apex:variable var="var_PaymentPeriodsYear" value="{!12}"/>
+            <apex:variable var="var_PerCapitalYear" value="{!12}"/>
+            <!-- VARIABLES INICIALES -->
+           
+            <!--<apex:variable var="Var_rMensual" value="{!((1+(Contract.SM_Annual_Interest__c/var_PeriodosCapitalizacionYear))^(var_PaymentPeriodsYear/var_PeriodosCapitalizacionYear))-1}"/>     -->     
+            <apex:variable var="Var_rMensual" value="{!(((1+(Contract.SM_Annual_Interest__c/12))^(12/12))-1)/100}"/> 
+            <apex:variable var="var_EndingBalance" value="{!var_BegingBalance-(Var_Payment-(var_BegingBalance*Var_rMensual))}"/>
+         
+
+           <table style="text-align:Center" >
+                <thead>
+                    <tr>
+                        <th colspan="5">
+                        PAYMENT DETAILS
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="text-align:Center">
+                        <td width="30%">
+                            Payment Amount
+                        </td>
+                        <td width="20%">
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!Contract.SM_Monthly_offer__c}" />
+                            </apex:outputText>
+                        </td>
+                        <td width="10%">
+                            &nbsp;
+                        </td>
+                        <td width="20%">
+                            Payent Date
+                        </td>
+                        <td width="20%">
+                            8
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+           <br/>
+            
+            <table style="text-align:Center"  width="100%">
+                <thead>
+                    <tr>
+                        <th>No.</th>
+                        <th width="13%">Scheduled Date</th>
+                        <th width="13%">Payment Date</th>
+                        <th width="13%">Scheduled Payment</th>
+                        <th width="13%">Beginning Balance</th>
+                        <th width="13%">Payment</th>
+                        <th width="13%">Principal</th>
+                        <th width="13%">Interest</th>
+                        <th width="13%">Late Fee</th>
+                        <th width="13%">Ending Balance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="text-align:Center">
+                        <td >1</td>
+                        <td>
+                            <!-- Payment Date -->
+                            <apex:outputText value="{0,date,MM'/'dd'/'yyyy}">
+                                <apex:param value="{!DATE(YEAR(Contract.SM_Start_date__c),MONTH(Contract.SM_Start_date__c),Contract.SM_Payment_day__c)}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Payment Date -->
+                            <apex:outputText value="{0,date,MM'/'dd'/'yyyy}">
+                                <apex:param value="{!Contract.SM_Start_date__c}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- *FIJO* Payment -->
+                            <apex:outputText value="{0, number, currency}">
+                               <apex:param value="{!Var_Payment}" />
+                            </apex:outputText>
+
+                        </td>
+                        <td>
+                            <!-- Beginning Balance -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!var_BegingBalance}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- *FIJO* Payment -->
+                            <apex:outputText value="{0, number, currency}">
+                               <apex:param value="{!Var_Payment}" />
+                            </apex:outputText>
+
+                        </td>
+                        <td>
+                            <!-- Principal -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!Var_Payment-(var_BegingBalance*Var_rMensual)}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Interest -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!var_BegingBalance*Var_rMensual}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Late Fee -->
+                            * $0.00
+                        </td>
+                        <td>
+                            <!-- Ending Balance -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:variable var="var_BegingBalance" value="{!var_BegingBalance-(Var_Payment-(var_BegingBalance*Var_rMensual))}"/>
+                                <apex:param value="{!var_BegingBalance}" />
+                            </apex:outputText>
+                        </td>
+                    </tr>
+                       <apex:variable var="var_PaymentDate" value="{!addMonths(Contract.SM_Start_date__c,1)+1}"/> 
+                   <tr>
+                        <td>2</td>
+                        <td>
+                            <!-- Schedule Date -->
+                            <apex:outputText value="{0,date,MM'/'dd'/'yyyy}">
+                                <apex:param value="{!DATE(YEAR(Contract.SM_Start_date__c),MONTH(var_PaymentDate),Contract.SM_Payment_day__c)}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Payment Date -->
+                            <apex:outputText value="{0,date,MM'/'dd'/'yyyy}">
+                                <small>Payment Acce<br/></small>
+                                <apex:param value="{!Contract.SM_Start_date__c}" />   <!--   AQUI VA LA FECHA DEL ULTIMO PAYMENT COBRADO  -->
+                            </apex:outputText>
+                        </td>
+                       <td>
+                            <!-- *FIJO* Scheduled Payment -->
+                            <apex:outputText value="{0, number, currency}">
+                               <apex:param value="{!Var_Payment}" />
+                            </apex:outputText>
+
+                        </td>
+                        <td>
+                            <!-- Beginning Balance -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!var_BegingBalance}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Payment -->
+                            <apex:outputText value="{0, number, currency}">
+                               <small>PaymentAmo<br/></small>
+                               <apex:param value="{!Var_Payment}" />         <!--  pago realizado en el payent del mes correspondiente  -->
+                            </apex:outputText>
+
+                        </td>
+                        <td>
+                            <!-- Principal -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!Var_Payment-(var_BegingBalance*Var_rMensual)}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Interest -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!var_BegingBalance*Var_rMensual}" />
+                            </apex:outputText>
+                        </td>
+                       <td>
+                            <!-- Late Fee -->
+                            * $0.00
+                        </td>
+                        <td>
+                            <!-- Ending Balance -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:variable var="var_BegingBalance" value="{!var_BegingBalance-(Var_Payment-(var_BegingBalance*Var_rMensual))}"/>
+                                <apex:param value="{!var_BegingBalance}" />
+                            </apex:outputText>
+                        </td>
+                    </tr>
+                     <apex:variable var="var_PaymentDate" value="{!addMonths(var_PaymentDate,1)}"/> 
+                   <tr>
+                        <td>3</td>
+                        <td>
+                            <!-- Schedule Date -->
+                            <apex:outputText value="{0,date,MM'/'dd'/'yyyy}">
+                                <apex:param value="{!DATE(YEAR(Contract.SM_Start_date__c),MONTH(var_PaymentDate),Contract.SM_Payment_day__c)}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Payment Date -->
+                        </td>
+                       <td>
+                            <!-- *FIJO* Scheduled Payment -->
+                            <apex:outputText value="{0, number, currency}">
+                               <apex:param value="{!Var_Payment}" />
+                            </apex:outputText>
+
+                        </td>
+                        <td>
+                            <!-- Beginning Balance -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!var_BegingBalance}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Payment -->
+                        </td>
+                        <td>
+                            <!-- Principal -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!Var_Payment-(var_BegingBalance*Var_rMensual)}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Interest -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!var_BegingBalance*Var_rMensual}" />
+                            </apex:outputText>
+                        </td>
+                       <td>
+                            <!-- Late Fee -->
+                        </td>
+                        <td>
+                            <!-- Ending Balance -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:variable var="var_BegingBalance" value="{!var_BegingBalance-(Var_Payment-(var_BegingBalance*Var_rMensual))}"/>
+                                <apex:param value="{!var_BegingBalance}" />
+                            </apex:outputText>
+                        </td>
+                    </tr>
+                     <apex:variable var="var_PaymentDate" value="{!addMonths(var_PaymentDate,1)}"/> 
+                   <tr>
+                        <td>4</td>
+                        <td>
+                            <!-- Schedule Date -->
+                            <apex:outputText value="{0,date,MM'/'dd'/'yyyy}">
+                                <apex:param value="{!DATE(YEAR(Contract.SM_Start_date__c),MONTH(var_PaymentDate),Contract.SM_Payment_day__c)}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Payment Date -->
+                        </td>
+                       <td>
+                            <!-- *FIJO* Scheduled Payment -->
+                            <apex:outputText value="{0, number, currency}">
+                               <apex:param value="{!Var_Payment}" />
+                            </apex:outputText>
+
+                        </td>
+                        <td>
+                            <!-- Beginning Balance -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!var_BegingBalance}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Payment -->
+                        </td>
+                        <td>
+                            <!-- Principal -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!Var_Payment-(var_BegingBalance*Var_rMensual)}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Interest -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!var_BegingBalance*Var_rMensual}" />
+                            </apex:outputText>
+                        </td>
+                       <td>
+                            <!-- Late Fee -->
+                        </td>
+                        <td>
+                            <!-- Ending Balance -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:variable var="var_BegingBalance" value="{!var_BegingBalance-(Var_Payment-(var_BegingBalance*Var_rMensual))}"/>
+                                <apex:param value="{!var_BegingBalance}" />
+                            </apex:outputText>
+                        </td>
+                    </tr>
+                     <apex:variable var="var_PaymentDate" value="{!addMonths(var_PaymentDate,1)}"/> 
+                   <tr>
+                        <td>5</td>
+                        <td>
+                            <!-- Schedule Date -->
+                            <apex:outputText value="{0,date,MM'/'dd'/'yyyy}">
+                                <apex:param value="{!DATE(YEAR(Contract.SM_Start_date__c),MONTH(var_PaymentDate),Contract.SM_Payment_day__c)}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Payment Date -->
+                        </td>
+                       <td>
+                            <!-- *FIJO* Scheduled Payment -->
+                            <apex:outputText value="{0, number, currency}">
+                               <apex:param value="{!Var_Payment}" />
+                            </apex:outputText>
+
+                        </td>
+                        <td>
+                            <!-- Beginning Balance -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!var_BegingBalance}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Payment -->
+                        </td>
+                        <td>
+                            <!-- Principal -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!Var_Payment-(var_BegingBalance*Var_rMensual)}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Interest -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!var_BegingBalance*Var_rMensual}" />
+                            </apex:outputText>
+                        </td>
+                       <td>
+                            <!-- Late Fee -->
+                        </td>
+                        <td>
+                            <!-- Ending Balance -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:variable var="var_BegingBalance" value="{!var_BegingBalance-(Var_Payment-(var_BegingBalance*Var_rMensual))}"/>
+                                <apex:param value="{!var_BegingBalance}" />
+                            </apex:outputText>
+                        </td>
+                    </tr>
+                     <apex:variable var="var_PaymentDate" value="{!addMonths(var_PaymentDate,1)}"/> 
+                   <tr>
+                        <td>6</td>
+                        <td>
+                            <!-- Schedule Date -->
+                            <apex:outputText value="{0,date,MM'/'dd'/'yyyy}">
+                                <apex:param value="{!DATE(YEAR(Contract.SM_Start_date__c),MONTH(var_PaymentDate),Contract.SM_Payment_day__c)}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Payment Date -->
+                        </td>
+                       <td>
+                            <!-- *FIJO* Scheduled Payment -->
+                            <apex:outputText value="{0, number, currency}">
+                               <apex:param value="{!Var_Payment}" />
+                            </apex:outputText>
+
+                        </td>
+                        <td>
+                            <!-- Beginning Balance -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!var_BegingBalance}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Payment -->
+                        </td>
+                        <td>
+                            <!-- Principal -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!Var_Payment-(var_BegingBalance*Var_rMensual)}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Interest -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!var_BegingBalance*Var_rMensual}" />
+                            </apex:outputText>
+                        </td>
+                       <td>
+                            <!-- Late Fee -->
+                        </td>
+                        <td>
+                            <!-- Ending Balance -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:variable var="var_BegingBalance" value="{!var_BegingBalance-(Var_Payment-(var_BegingBalance*Var_rMensual))}"/>
+                                <apex:param value="{!var_BegingBalance}" />
+                            </apex:outputText>
+                        </td>
+                    </tr>
+                     <apex:variable var="var_PaymentDate" value="{!addMonths(var_PaymentDate,1)}"/> 
+                   <tr>
+                        <td>7</td>
+                        <td>
+                            <!-- Schedule Date -->
+                            <apex:outputText value="{0,date,MM'/'dd'/'yyyy}">
+                                <apex:param value="{!DATE(YEAR(Contract.SM_Start_date__c),MONTH(var_PaymentDate),Contract.SM_Payment_day__c)}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Payment Date -->
+                        </td>
+                       <td>
+                            <!-- *FIJO* Scheduled Payment -->
+                            <apex:outputText value="{0, number, currency}">
+                               <apex:param value="{!Var_Payment}" />
+                            </apex:outputText>
+
+                        </td>
+                        <td>
+                            <!-- Beginning Balance -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!var_BegingBalance}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Payment -->
+                        </td>
+                        <td>
+                            <!-- Principal -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!Var_Payment-(var_BegingBalance*Var_rMensual)}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Interest -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!var_BegingBalance*Var_rMensual}" />
+                            </apex:outputText>
+                        </td>
+                       <td>
+                            <!-- Late Fee -->
+                        </td>
+                        <td>
+                            <!-- Ending Balance -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:variable var="var_BegingBalance" value="{!var_BegingBalance-(Var_Payment-(var_BegingBalance*Var_rMensual))}"/>
+                                <apex:param value="{!var_BegingBalance}" />
+                            </apex:outputText>
+                        </td>
+                    </tr>
+                     <apex:variable var="var_PaymentDate" value="{!addMonths(var_PaymentDate,1)}"/> 
+                   <tr>
+                        <td>8</td>
+                        <td>
+                            <!-- Schedule Date -->
+                            <apex:outputText value="{0,date,MM'/'dd'/'yyyy}">
+                                <apex:param value="{!DATE(YEAR(Contract.SM_Start_date__c),MONTH(var_PaymentDate),Contract.SM_Payment_day__c)}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Payment Date -->
+                        </td>
+                       <td>
+                            <!-- *FIJO* Scheduled Payment -->
+                            <apex:outputText value="{0, number, currency}">
+                               <apex:param value="{!Var_Payment}" />
+                            </apex:outputText>
+
+                        </td>
+                        <td>
+                            <!-- Beginning Balance -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!var_BegingBalance}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Payment -->
+                        </td>
+                        <td>
+                            <!-- Principal -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!Var_Payment-(var_BegingBalance*Var_rMensual)}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Interest -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!var_BegingBalance*Var_rMensual}" />
+                            </apex:outputText>
+                        </td>
+                       <td>
+                            <!-- Late Fee -->
+                        </td>
+                        <td>
+                            <!-- Ending Balance -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:variable var="var_BegingBalance" value="{!var_BegingBalance-(Var_Payment-(var_BegingBalance*Var_rMensual))}"/>
+                                <apex:param value="{!var_BegingBalance}" />
+                            </apex:outputText>
+                        </td>
+                    </tr>
+                     <apex:variable var="var_PaymentDate" value="{!addMonths(var_PaymentDate,1)}"/> 
+                   <tr>
+                        <td>9</td>
+                        <td>
+                            <!-- Schedule Date -->
+                            <apex:outputText value="{0,date,MM'/'dd'/'yyyy}">
+                                <apex:param value="{!DATE(YEAR(Contract.SM_Start_date__c),MONTH(var_PaymentDate),Contract.SM_Payment_day__c)}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Payment Date -->
+                        </td>
+                       <td>
+                            <!-- *FIJO* Scheduled Payment -->
+                            <apex:outputText value="{0, number, currency}">
+                               <apex:param value="{!Var_Payment}" />
+                            </apex:outputText>
+
+                        </td>
+                        <td>
+                            <!-- Beginning Balance -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!var_BegingBalance}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Payment -->
+                        </td>
+                        <td>
+                            <!-- Principal -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!Var_Payment-(var_BegingBalance*Var_rMensual)}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Interest -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!var_BegingBalance*Var_rMensual}" />
+                            </apex:outputText>
+                        </td>
+                       <td>
+                            <!-- Late Fee -->
+                        </td>
+                        <td>
+                            <!-- Ending Balance -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:variable var="var_BegingBalance" value="{!var_BegingBalance-(Var_Payment-(var_BegingBalance*Var_rMensual))}"/>
+                                <apex:param value="{!var_BegingBalance}" />
+                            </apex:outputText>
+                        </td>
+                    </tr>
+                     <apex:variable var="var_PaymentDate" value="{!addMonths(var_PaymentDate,1)}"/> 
+                   <tr>
+                        <td>10</td>
+                        <td>
+                            <!-- Schedule Date -->
+                            <apex:outputText value="{0,date,MM'/'dd'/'yyyy}">
+                                <apex:param value="{!DATE(YEAR(Contract.SM_Start_date__c),MONTH(var_PaymentDate),Contract.SM_Payment_day__c)}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Payment Date -->
+                        </td>
+                       <td>
+                            <!-- *FIJO* Scheduled Payment -->
+                            <apex:outputText value="{0, number, currency}">
+                               <apex:param value="{!Var_Payment}" />
+                            </apex:outputText>
+
+                        </td>
+                        <td>
+                            <!-- Beginning Balance -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!var_BegingBalance}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Payment -->
+                        </td>
+                        <td>
+                            <!-- Principal -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!Var_Payment-(var_BegingBalance*Var_rMensual)}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Interest -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!var_BegingBalance*Var_rMensual}" />
+                            </apex:outputText>
+                        </td>
+                       <td>
+                            <!-- Late Fee -->
+                        </td>
+                        <td>
+                            <!-- Ending Balance -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:variable var="var_BegingBalance" value="{!var_BegingBalance-(Var_Payment-(var_BegingBalance*Var_rMensual))}"/>
+                                <apex:param value="{!var_BegingBalance}" />
+                            </apex:outputText>
+                        </td>
+                    </tr>
+                     <apex:variable var="var_PaymentDate" value="{!addMonths(var_PaymentDate,1)}"/> 
+                   <tr>
+                        <td>11</td>
+                        <td>
+                            <!-- Schedule Date -->
+                            <apex:outputText value="{0,date,MM'/'dd'/'yyyy}">
+                                <apex:param value="{!DATE(YEAR(Contract.SM_Start_date__c),MONTH(var_PaymentDate),Contract.SM_Payment_day__c)}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Payment Date -->
+                        </td>
+                       <td>
+                            <!-- *FIJO* Scheduled Payment -->
+                            <apex:outputText value="{0, number, currency}">
+                               <apex:param value="{!Var_Payment}" />
+                            </apex:outputText>
+
+                        </td>
+                        <td>
+                            <!-- Beginning Balance -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!var_BegingBalance}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Payment -->
+                        </td>
+                        <td>
+                            <!-- Principal -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!Var_Payment-(var_BegingBalance*Var_rMensual)}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Interest -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!var_BegingBalance*Var_rMensual}" />
+                            </apex:outputText>
+                        </td>
+                       <td>
+                            <!-- Late Fee -->
+                        </td>
+                        <td>
+                            <!-- Ending Balance -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:variable var="var_BegingBalance" value="{!var_BegingBalance-(Var_Payment-(var_BegingBalance*Var_rMensual))}"/>
+                                <apex:param value="{!var_BegingBalance}" />
+                            </apex:outputText>
+                        </td>
+                    </tr>
+                     <apex:variable var="var_PaymentDate" value="{!addMonths(var_PaymentDate,1)}"/> 
+                   <tr>
+                        <td>12</td>
+                        <td>
+                            <!-- Schedule Date -->
+                            <apex:outputText value="{0,date,MM'/'dd'/'yyyy}">
+                                <apex:param value="{!DATE(YEAR(Contract.SM_Start_date__c),MONTH(var_PaymentDate),Contract.SM_Payment_day__c)}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Payment Date -->
+                        </td>
+                       <td>
+                            <!-- *FIJO* Scheduled Payment -->
+                            <apex:outputText value="{0, number, currency}">
+                               <apex:param value="{!Var_Payment}" />
+                            </apex:outputText>
+
+                        </td>
+                        <td>
+                            <!-- Beginning Balance -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!var_BegingBalance}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Payment -->
+                        </td>
+                        <td>
+                            <!-- Principal -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!Var_Payment-(var_BegingBalance*Var_rMensual)}" />
+                            </apex:outputText>
+                        </td>
+                        <td>
+                            <!-- Interest -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:param value="{!var_BegingBalance*Var_rMensual}" />
+                            </apex:outputText>
+                        </td>
+                       <td>
+                            <!-- Late Fee -->
+                        </td>
+                        <td>
+                            <!-- Ending Balance -->
+                            <apex:outputText value="{0, number, currency}">
+                                <apex:variable var="var_BegingBalance" value="{!var_BegingBalance-(Var_Payment-(var_BegingBalance*Var_rMensual))}"/>
+                                <apex:param value="{!var_BegingBalance}" />
+                            </apex:outputText>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </apex:pageBlock>
+        
+        
+    </body>
+</apex:page>
