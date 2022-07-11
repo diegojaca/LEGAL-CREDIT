@@ -2,9 +2,9 @@
 * @description       :
 * @author            : diego.jacanamijoy@gmail.com
 * @group             :
-* @last modified on  : 06-12-2021
-* @last modified by  : Jonathan S. Pachon Ariza -> jpachon.ariza@gmail.com
-* Modifications Log
+* @last modified on  : 08/07/2022
+* @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
+* Modifications Log  : Related oppLineItem to Asset
 * Ver   Date         Author                        Modification
 * 1.0   02-04-2021   diego.jacanamijoy@gmail.com   Initial Version
 **/
@@ -12,6 +12,7 @@ public with sharing class SM_GenerateContractController {
 
     private List<String> oppsIds;
     private static Set<String> accountIds;
+    private static Map<String, Contract> masterContractByMasterProdLitem;
 
     /**Constructor */
     public SM_GenerateContractController(List<String> oppIdsvalids){
@@ -40,9 +41,10 @@ public with sharing class SM_GenerateContractController {
         String idsFormated = '(\'';
         idsFormated += String.join(oppsIds, '\',\'');
         idsFormated += '\')';
-        String query = 'SELECT AccountId,Account.PersonEmail, SM_Opportunity_Disposition__c, SM_Company_Setting__r.SM_IVU_State_Amount__c, SM_Company_Setting__r.SM_IVU_Municipal_Amount__c, (SELECT OpportunityId, Product2.SM_Way_to_pay__c, Product2.SM_Plan_Months__c, Product2.Id, Product2Id, Product2.Name, Product2.SM_Requires_AC__c,Product2.SM_Requires_RC__c,Product2.SM_Full_Payment__c,Product2.SM_Monthly_Offer__c, Product2.SM_AC_value__c, Product2.SM_RC_value__c, ';
+        
+        String query = 'SELECT AccountId,Account.PersonEmail, SM_Opportunity_Disposition__c, SM_Company_Setting__r.SM_IVU_State_Amount__c, SM_Company_Setting__r.SM_IVU_Municipal_Amount__c, (SELECT OpportunityId, SM_Total_AC__c, UnitPrice, Is_master__c, Product_Type__c, Principal_Opportunity_Product__c, Product2.SM_Way_to_pay__c, Product2.SM_Plan_Months__c, Product2.Id, Product2Id, Product2.Name, Product2.SM_Requires_AC__c,Product2.SM_Requires_RC__c,Product2.SM_Full_Payment__c,Product2.SM_Monthly_Offer__c, Product2.SM_AC_value__c, Product2.SM_RC_value__c, ';
         query += ' Product2.Process_automation_by_product_family__c, Product2.Process_automation_by_product_family__r.SM_Generates_dispute__c, Product2.Process_automation_by_product_family__r.SM_Type_of_contract__c ';
-        query += ' FROM OpportunityLineItems) FROM Opportunity WHERE Id In ' + idsFormated ;
+        query += ' FROM OpportunityLineItems ORDER BY Is_master__c desc) FROM Opportunity WHERE Id In ' + idsFormated;
         return SM_OpportunityHelper.getOpportunitiesByDinamicQuery(query);
     }
 
@@ -52,9 +54,12 @@ public with sharing class SM_GenerateContractController {
     * @param opps
     **/
     public static void validateOpportunityLineItems(List<Opportunity> opps){
+
         Map<String, Contract> contractByOppAndProccessAut = new Map<String, Contract>();
         Map<String, List<Asset>> assetsByOppAndProccessAut = new Map<String, List<Asset>>();
+        masterContractByMasterProdLitem = new Map<String, Contract>();
         accountIds = new Set<String>();
+
         /**Iterate opps */
         for(Opportunity opp: opps){
             // SFDCMP-201 - JSPA
@@ -66,7 +71,9 @@ public with sharing class SM_GenerateContractController {
                 /**Key for maps  oppId + ProccessAutomId */
                 String key = oppItem.OpportunityId + '-' + oppItem.Product2.Process_automation_by_product_family__c;
                 /**Validate keys of maps */
+
                 if(!contractByOppAndProccessAut.containsKey(key)){
+
                     /**New contract */
                     String wayOfACPayment = '';
                     String acFrequency = '';
@@ -83,6 +90,7 @@ public with sharing class SM_GenerateContractController {
                     //  SFDCMP-303 - JSPA
                     //  SFDCMP-325 - JSPA - Added SM_IVU_State__c & SM_IVU_Municipal__c fields to the creation of contract
                     String recordTypeIdStr = SM_Utils.getRecordTypeIdByDeveloperName('Contract', oppItem.Product2.Process_automation_by_product_family__r.SM_Type_of_contract__c);
+
                     Contract contract = new Contract(AccountId = opp.AccountId,
                                                      SM_Opportunity__c = opp.Id,
                                                      SM_Email_to_send_contract__c = opp.Account.PersonEmail,
@@ -92,12 +100,38 @@ public with sharing class SM_GenerateContractController {
                                                      SM_Way_of_AC_Payment__c = wayOfACPayment,
                                                      SM_Number_of_AC_Fees__c = numberOfACFees,
                                                      SM_IVU_State__c = opp.SM_Company_Setting__r.SM_IVU_State_Amount__c,
-                                                     SM_IVU_Municipal__c = opp.SM_Company_Setting__r.SM_IVU_Municipal_Amount__c);
+                                                     SM_IVU_Municipal__c = opp.SM_Company_Setting__r.SM_IVU_Municipal_Amount__c,
+                                                     Contract_Type__c = SM_ContractHelper.contractType.UNIQUE);
+                    
+                    //Build map of master contracts by master product line item
+                    if(isMaster(oppItem)){
+
+                        //Check if is master
+                        contract.Contract_Type__c = SM_ContractHelper.contractType.MASTER;
+                        masterContractByMasterProdLitem.put(oppItem.Id, contract);
+
+                    } else if(isDependent(oppItem)){
+
+                        //Check if is dependent
+                        contract.Contract_Type__c = SM_ContractHelper.contractType.DEPENDENT;
+                        contract.Principal_Contract__r = masterContractByMasterProdLitem.get(oppItem.Principal_Opportunity_Product__c);
+                    }
+
                     /**Instance of map */
                     contractByOppAndProccessAut.put(key, contract);
+                } else {
+
+                    //Check if is dependent
+                    if(contractByOppAndProccessAut.get(key).Contract_Type__c == SM_ContractHelper.contractType.UNIQUE && isDependent(oppItem)){
+                        contractByOppAndProccessAut.get(key).Contract_Type__c = SM_ContractHelper.contractType.DEPENDENT;
+                        contractByOppAndProccessAut.get(key).Principal_Contract__r = masterContractByMasterProdLitem.get(oppItem.Principal_Opportunity_Product__c);
+                    }
                 }
+
                 /**Create Asset by OpportunityLineItem */
-                Asset asset = new Asset(AccountId = opp.AccountId, Product2 = oppItem.Product2, Product2Id = oppItem.Product2Id, Status = 'New', Name = oppItem.Product2.Name, Price = oppItem.Product2.SM_Monthly_Offer__c);
+                Asset asset = new Asset(AccountId = opp.AccountId, Product2 = oppItem.Product2, Product2Id = oppItem.Product2Id, Status = 'New', Name = oppItem.Product2.Name, 
+                                        Price = oppItem.Product2.SM_Monthly_Offer__c, Opportunity_Product__c = oppItem.Id, AC_Price__c = oppItem.SM_Total_AC__c, Price__c = oppItem.UnitPrice);
+                
                 if(!assetsByOppAndProccessAut.containsKey(key)){
                     assetsByOppAndProccessAut.put(key, new List<Asset>{asset});
                 }else{
@@ -110,6 +144,27 @@ public with sharing class SM_GenerateContractController {
     }
 
     /**
+    * @description This method check if product is master
+    * @author Diego Jacanamijoy -> djacanamijoy@legal-credit.com | 08/07/2022 
+    * @param oppLine 
+    * @return Boolean 
+    **/
+    private static Boolean isMaster(OpportunityLineItem oppLine){
+        return oppLine.Is_master__c && oppLine.Product_Type__c == SM_ContractHelper.contractType.MASTER;
+    }
+
+    /**
+    * @description This method check if product is dependent
+    * @author Diego Jacanamijoy -> djacanamijoy@legal-credit.com | 08/07/2022 
+    * @param oppLine 
+    * @return Boolean 
+    **/
+    private static Boolean isDependent(OpportunityLineItem oppLine){
+        return oppLine.Product_Type__c == SM_OpportunityHelper.contractType.DEPENDENT && 
+                                        masterContractByMasterProdLitem.containsKey(oppLine.Principal_Opportunity_Product__c);
+    }
+
+    /**
     * @description This methos buikd data to create
     * @author diego.jacanamijoy@gmail.com | 11/02/2021
     * @param contractByOppAndProccessAut
@@ -117,6 +172,10 @@ public with sharing class SM_GenerateContractController {
     **/
     public static void buildDataToCreate(Map<String, Contract> contractByOppAndProccessAut, Map<String, List<Asset>> assetsByOppAndProccessAut){
         // SFDCMP-201 - JSPA
+
+        List<Contract> mastersToInsert = new List<Contract>();
+        List<Contract> dependentsToInsert = new List<Contract>();         
+
         Map<String, String> addressIdByKeys;
         if (!accountIds.isEmpty()) {
             addressIdByKeys = getAccountAddresses();
@@ -129,6 +188,8 @@ public with sharing class SM_GenerateContractController {
             Boolean isRc = false;
             String wayOfContract = '';
             Decimal planMonths = 0;
+            Decimal totalACPrices = 0;
+
             // SFDCMP-211
             // Boolean isfP = false;
             /**Iterate map assets by automations*/
@@ -140,6 +201,7 @@ public with sharing class SM_GenerateContractController {
                 // SFDCMP-211
                 wayOfContract = asset.Product2.SM_Way_to_pay__c;
                 planMonths = asset.Product2.SM_Plan_Months__c > planMonths ? asset.Product2.SM_Plan_Months__c : planMonths;
+
                 // SFDCMP-211
                 // isfP = asset.Product2.SM_Requires_RC__c ? asset.Product2.SM_Full_Payment__c : isfP;
             }
@@ -164,9 +226,28 @@ public with sharing class SM_GenerateContractController {
             // contract.SM_Plan_Months__c=contract.SM_Way_of_Contract_Payment__c == SM_ContractHelper.wayOfContract.FEES ? 1 : NULL;
             contract.SM_Plan_Months__c = planMonths;
             contractByOppAndProccessAut.put(key, contract);
+            //Check master or dependent 
+            if(contract.Contract_type__c == SM_ContractHelper.contractType.MASTER){
+                mastersToInsert.add(contract);
+            }else {
+                dependentsToInsert.add(contract);
+            }
         }
-        /**Create contracts */
-        insert contractByOppAndProccessAut.values();
+
+        /**Create contracts first masters*/
+        if(!mastersToInsert.isEmpty()){
+            insert mastersToInsert;
+        }
+
+        if(!dependentsToInsert.isEmpty()){
+            //Relate master ids
+            for (Contract depend : dependentsToInsert) {
+                if(depend.Principal_Contract__r <> null){
+                    depend.Principal_Contract__c = depend.Principal_Contract__r.Id;
+                }
+            }
+            insert dependentsToInsert;
+        }
 
         /**Iterate assets map for related contractId */
         List<Asset> assetsToInsert = new List<Asset>();
@@ -175,6 +256,7 @@ public with sharing class SM_GenerateContractController {
                 asset.SM_Contract__c = contractByOppAndProccessAut.get(key).Id;
                 // JSPA - SFDCMP-239
                 asset.SM_Email_to_send_contract__c = contractByOppAndProccessAut.get(key).SM_Email_to_send_contract__c;
+                asset.Principal_Contract__c = contractByOppAndProccessAut.get(key).Principal_Contract__r.Id;
                 assetsToInsert.add(asset);
             }
         }

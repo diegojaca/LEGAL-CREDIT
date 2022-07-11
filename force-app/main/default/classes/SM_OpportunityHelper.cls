@@ -2,8 +2,8 @@
  * @description       : Helper class of Account object
  * @author            : jpachon@legal-credit.com
  * @group             : 
- * @last modified on  : 02-04-2021
- * @last modified by  : diego.jacanamijoy@gmail.com
+ * @last modified on  : 08/07/2022
+ * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * Modifications Log 
  * Ver   Date         Author                        Modification
  * 1.0   11-24-2020   jpachon@legal-credit.com   Initial Version
@@ -14,6 +14,7 @@ public with sharing class SM_OpportunityHelper {
     public static ContractStageEnum contractStage = new ContractStageEnum();
     public static RecordTypeEnum recordType = new RecordTypeEnum();
     public static DispositionEnum dispositions = new DispositionEnum();
+    public static ProductTypeEnum contractType = new ProductTypeEnum();
 
     public class StageEnum {
         public String qualitifation = 'Qualification';
@@ -44,6 +45,13 @@ public with sharing class SM_OpportunityHelper {
     public class DispositionEnum {
         public String sale = 'Sale';
         public String salePtp = 'Sale PTP';
+    }
+
+    /** This class represents Enum to attribute Product Type of ProductLineItem (Developer name) */
+    public class ProductTypeEnum {
+        public String DEPENDENT = 'Dependent';
+        public String MASTER = 'Master';
+        public String UNIQUE = 'Unique';
     }
 
     /**

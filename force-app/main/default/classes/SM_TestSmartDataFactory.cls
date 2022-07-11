@@ -2,8 +2,8 @@
  * @description       : This class, build necesary data to test class
  * @author            : jpachon.ariza@legal-credit.com
  * @group             :
- * @last modified on  : 06-10-2021
- * @last modified by  : Jonathan S. Pachon Ariza -> jpachon.ariza@gmail.com
+ * @last modified on  : 08/07/2022
+ * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * Modifications Log
  * Ver   Date         Author                     Modification
  * 1.0   11-11-2020   jpachon.ariza@legal-credit.com   Initial Version
@@ -207,6 +207,7 @@ public with sharing class SM_TestSmartDataFactory {
                 SM_Generates_dispute__c = true,
                 SM_Type_of_contract__c = 'Credit Rectification'
             );
+            insert processAutomationObj;
         }
         return processAutomationObj;
     }

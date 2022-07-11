@@ -2,8 +2,8 @@
  * @description       : 
  * @author            : Jonathan S. Pachon Ariza -> jpachon@legal-credit.com
  * @group             : 
- * @last modified on  : 07-30-2021
- * @last modified by  : Jonathan S. Pachon Ariza -> jpachon.ariza@gmail.com
+ * @last modified on  : 08/07/2022
+ * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * Modifications Log 
  * Ver   Date         Author                                                 Modification
  * 1.0   01-28-2021   Jonathan S. Pachon Ariza -> jpachon@legal-credit.com   Initial Version
@@ -15,6 +15,7 @@ public without sharing class SM_ContractHelper {
     public static WayOfContractEnum wayOfContract = new WayOfContractEnum();
     public static WayOfACPaymentEnum wayOfACPayment = new WayOfACPaymentEnum();
     public static ACFrequencyEnum acFrequency = new ACFrequencyEnum();
+    public static ContractTypeEnum contractType = new ContractTypeEnum();
 
     /** This class represents Enum to attribute status (Developer name) */
     public class StatusEnum {
@@ -49,6 +50,13 @@ public without sharing class SM_ContractHelper {
         public String WEEKLY = 'Weekly';
         public String BIWEEKLY = 'Biweekly';
         public String MONTHLY = 'Monthly';
+    }
+
+    /** This class represents Enum to attribute Contract Type of Contract (Developer name) */
+    public class ContractTypeEnum {
+        public String DEPENDENT = 'Dependent';
+        public String MASTER = 'Master';
+        public String UNIQUE = 'Unique';
     }
 
     /**

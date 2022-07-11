@@ -2,8 +2,8 @@
  * @description       : 
  * @author            : diego.jacanamijoy@gmail.com
  * @group             : 
- * @last modified on  : 03-11-2021
- * @last modified by  : Jonathan S. Pachon Ariza -> jpachon@legal-credit.com
+ * @last modified on  : 08/07/2022
+ * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * Modifications Log 
  * Ver   Date         Author                        Modification
  * 1.0   02-05-2021   diego.jacanamijoy@gmail.com   Initial Version
@@ -11,8 +11,9 @@
 @IsTest
 public with sharing class SM_GenerateContractControllerTest {
     
-    @IsTest
+    @TestSetup
     static void makeData(){
+
         insert new SM_SetupToken__c (SM_Active__c = true ,SM_ExpirationDate__c=System.now(), SM_DurationMinutes__c = 15 , Name ='Token Native');
         insert SM_TestSmartDataFactory.getProccessAutomation();
         Account acc = SM_TestSmartDataFactory.getPersonAccount();
@@ -22,13 +23,47 @@ public with sharing class SM_GenerateContractControllerTest {
         opp.AccountId = acc.Id;
         insert opp;
 
-        OpportunityLineItem oppLit = SM_TestSmartDataFactory.getOpportunityLineItem();
-        oppLit.OpportunityId = opp.Id;
-        oppLit.TotalPrice = 1200;
-        insert oppLit;
+        //master
+        OpportunityLineItem oppLitMaster = SM_TestSmartDataFactory.getOpportunityLineItem();
+        oppLitMaster.OpportunityId = opp.Id;
+        oppLitMaster.TotalPrice = 1200;
+        oppLitMaster.Product_Type__c = SM_OpportunityHelper.contractType.MASTER;
+        oppLitMaster.Is_master__c = true;
+        insert oppLitMaster;
 
-        OpportunityLineItem oppLit2 = oppLit.clone();
-        insert oppLit2;
+        Process_automation_by_product_family__c paf = new Process_automation_by_product_family__c();
+        paf.Name = 'Depend proccess';
+        paf.SM_Type_of_contract__c = 'Legal Credit Solution';
+        paf.SM_Generates_dispute__c = true;
+        insert paf;
+
+        Product2 p2Depend = SM_TestSmartDataFactory.getProduct2().clone(false, false, false, false);
+        p2Depend.Name = 'Dependent Laptop X200';
+        p2Depend.Family = 'Dependent Hardware';
+        p2Depend.Process_automation_by_product_family__c = paf.Id;
+        insert p2Depend;
+
+        PricebookEntry pbe = SM_TestSmartDataFactory.getPricebookEntry().clone();
+        pbe.Product2Id = p2Depend.Id;
+        insert pbe;
+
+        //Dependent 1
+        OpportunityLineItem oppLitDependet1 = oppLitMaster.clone(false, false, false, false);
+        oppLitDependet1.Product_Type__c = SM_OpportunityHelper.contractType.DEPENDENT;
+        oppLitDependet1.Is_master__c = false;
+        oppLitDependet1.Product2Id = p2Depend.Id; 
+        oppLitDependet1.PricebookEntryId = pbe.Id;
+        oppLitDependet1.Principal_Opportunity_Product__c = oppLitMaster.Id;
+        insert oppLitDependet1;
+
+        //Dependent 2
+        OpportunityLineItem oppLitDependet2 = oppLitMaster.clone(false, false, false, false);
+        oppLitDependet2.Product_Type__c = SM_OpportunityHelper.contractType.DEPENDENT;
+        oppLitDependet2.Is_master__c = false;
+        oppLitDependet2.Product2Id = p2Depend.Id;
+        oppLitDependet2.PricebookEntryId = pbe.Id;
+        oppLitDependet2.Principal_Opportunity_Product__c = oppLitMaster.Id;
+        insert oppLitDependet2;
 
         ContactPointAddress cpa = SM_TestSmartDataFactory.getContactPointAddress('','','','','',SM_ContactPointAddressHelper.type.POSTAL_ADDRESS);
         cpa.ParentId = acc.Id;
@@ -36,18 +71,25 @@ public with sharing class SM_GenerateContractControllerTest {
 
     }
 
-    @IsTest(SeeAllData=true)
+    @IsTest
     static void generateContractsOk(){
         Opportunity opp = [SELECT Id FROM Opportunity LIMIT 1];
         
         Test.startTest();
             SM_GenerateContractController geerateContract = new SM_GenerateContractController(new List<String>{opp.Id});
-            Contract contract = [SELECT SM_Generates_dispute__c, SM_Requires_AC_Payment__c, SM_Total_ac__c, SM_Postal_address__c FROM Contract LIMIT 1];
-            System.assertNotEquals(null, contract, 'Must return one contract record');
-            System.assertEquals(true, contract.SM_Generates_dispute__c, 'Must return true dispute');
-            System.assertEquals(true, contract.SM_Requires_AC_Payment__c, 'Must return true Ac required');
+            Contract[] contracts = [SELECT SM_Generates_dispute__c, SM_Requires_AC_Payment__c, SM_Total_ac__c, SM_Postal_address__c FROM Contract];
+            System.assertEquals(2, contracts.size(), 'Must return 2 contract record');
+            System.assertEquals(true, contracts[0].SM_Generates_dispute__c, 'Must return true dispute');
+            System.assertEquals(true, contracts[0].SM_Requires_AC_Payment__c, 'Must return true Ac required');
             //System.assertEquals(40000, contract.SM_Total_ac__c, 'Must return 40000');
-            System.assertNotEquals(null, contract.SM_Postal_address__c, 'Must be not null');
+            System.assertNotEquals(null, contracts[0].SM_Postal_address__c, 'Must be not null');
+            //Check related contract
+            System.assertEquals(1, [SELECT Count() FROM Contract WHERE Contract_type__c =: SM_ContractHelper.contractType.MASTER], 'Must be return one record');
+            //Get master
+            Contract master = [SELECT Id FROM Contract WHERE Contract_type__c =: SM_ContractHelper.contractType.MASTER];
+
+            System.assertEquals(1, [SELECT Count() FROM Contract WHERE Contract_type__c =: SM_ContractHelper.contractType.DEPENDENT AND Principal_Contract__c =: master.Id], 'Must be return one dependent contract');
+            System.assertEquals(2, [SELECT Count() FROM Asset WHERE Principal_Contract__c =: master.Id], 'Must be return two dependent asset');
         Test.stopTest();
     }
 }

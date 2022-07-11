@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+	<types>
+		<members>SM_ContractHelper</members>
+		<members>SM_GenerateContractController</members>
+		<members>SM_GenerateContractControllerTest</members>
+		<members>SM_OpportunityHelper</members>
+		<members>SM_TestSmartDataFactory</members>
+		<name>ApexClass</name>
+	</types>
+	<types>
+		<members>Asset.AC_Price__c</members>
+		<members>Asset.Opportunity_Product__c</members>
+		<members>Asset.Price__c</members>
+		<members>Asset.Principal_Contract__c</members>
+		<members>Contract.Collection_Main_Contract__c</members>
+		<members>Contract.Contract_Type__c</members>
+		<members>Contract.Principal_Contract__c</members>
+		<members>OpportunityLineItem.Is_master__c</members>
+		<members>OpportunityLineItem.Principal_Opportunity_Product__c</members>
+		<members>OpportunityLineItem.Product_Type__c</members>
+		<members>Process_automation_by_product_family__c.Ready_for_collection_in__c</members>
+		<name>CustomField</name>
+	</types>
+	<version>53.0</version>
+</Package>
