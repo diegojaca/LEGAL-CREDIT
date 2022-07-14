@@ -2,8 +2,8 @@
  * @description       : Dispute Object OpportunityLineItem
  * @author            : cjimenez@legal-credit.com
  * @group             :
- * @last modified on  : 06-12-2021
- * @last modified by  : Jonathan S. Pachon Ariza -> jpachon.ariza@gmail.com
+ * @last modified on  : 12/07/2022
+ * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * Modifications Log
  * Ver   Date          Author                        Modification
  * 1.0   11-02-2021   cjimenez@legal-credit.com  Initial Version
@@ -221,7 +221,7 @@ public with sharing class SM_OpportunityLineItemHandler extends SM_TriggerHandle
     * @param oppLineItem
     **/
     public void showErrorMessage(OpportunityLineItem oppLineItem){
-         oppLineItem.addError(LABEL.SM_OPPORTUNITYLINEITEM_MASSAGE);
+         //oppLineItem.addError(LABEL.SM_OPPORTUNITYLINEITEM_MASSAGE);
     }
 
 }

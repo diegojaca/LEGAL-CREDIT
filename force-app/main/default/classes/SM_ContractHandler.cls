@@ -2,8 +2,8 @@
  * @description       :
  * @author            : Jonathan S. Pachon Ariza -> jpachon@legal-credit.com
  * @group             :
- * @last modified on  : 06-07-2022
- * @last modified by  : Jonathan S. Pachon Ariza -> jpachon.ariza@gmail.com
+ * @last modified on  : 13/07/2022
+ * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * Modifications Log
  * Ver   Date         Author                                                 Modification
  * 1.0   01-28-2021   Jonathan S. Pachon Ariza -> jpachon@legal-credit.com   Initial Version
@@ -37,7 +37,7 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
         // JSPA - SFDCMP-158
         processAssetsByContractStatusChange(Trigger.new, Trigger.oldMap);
         // JSPA - SFDCMP-344 - Pending to delete because this logic was moved to SM_PaymentProcessController
-        // updatePaymentMethodInChildRecords(Trigger.new, Trigger.oldMap);
+        //updatePaymentMethodInChildRecords(Trigger.new, Trigger.oldMap);
         // JSPA - SFDCMP-340
         updateNextTransactionDayInACHOrderAndChargentOrder(Trigger.newMap, Trigger.oldMap);
         // JSPA - SFDCMP-358
@@ -57,6 +57,8 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
         processACChanges(Trigger.new, Trigger.oldMap);
         // JSPA - SFDCMP-384
         validateIfHasPendingApprovalChargentOrders(Trigger.new, Trigger.oldMap);
+        //DAJC SMMCI-14
+        updateCollectionMain(Trigger.new, Trigger.oldMap); 
     }
 
 
@@ -791,6 +793,46 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
                 newRecord.addError(System.label.DONT_ALLOW_PAYMENT_METHOD_CHANGES_MESSAGE);
             }
         }
+    }
+
+    /**
+    * @description Check update Collection_Main_Contract__c field
+    * @author Diego Jacanamijoy -> djacanamijoy@legal-credit.com | 11/07/2022 
+    * @param newRecords 
+    * @param oldRecordsMap 
+    **/
+    private void updateCollectionMain(List<Contract> newRecords, Map<Id, SObject> oldRecordsMap){
+
+        List<Contract> contractsWithChangeStatus = new List<Contract>();
+        Set<String> procesAutmIds = new Set<String>();
+
+        for (Contract newRecord : newRecords) {
+            Contract oldRecord = (Contract)oldRecordsMap.get(newRecord.Id);
+            if (SM_Utils.isChangedField(newRecord, oldRecord, 'Status') && newRecord.Collection_Main_Contract__c == SM_ContractHelper.collectionMain.PENDING_DATA_CAPTURE){
+                procesAutmIds.add(newRecord.SM_Process_automation_by_product_family__c);
+                contractsWithChangeStatus.add(newRecord);
+            }
+        }
+
+        if(!procesAutmIds.isEmpty()){
+            Map<Id,Process_automation_by_product_family__c> procesAutomById = getProcesAutomations(procesAutmIds);
+            //Check new status of contracts
+            for(Contract contract: contractsWithChangeStatus){
+                if(contract.Status == procesAutomById.get(contract.SM_Process_automation_by_product_family__c)?.Ready_for_collection_in__c){
+                    contract.Collection_Main_Contract__c = SM_ContractHelper.collectionMain.READY_FOR_COLLECTION;
+                }
+            }
+        }
+    }
+
+    /**
+    * @description Get proces automations by id
+    * @author Diego Jacanamijoy -> djacanamijoy@legal-credit.com | 11/07/2022 
+    * @param procesAutmIds 
+    * @return Map<Id, Process_automation_by_product_family__c> 
+    **/
+    private Map<Id,Process_automation_by_product_family__c> getProcesAutomations(Set<String> procesAutmIds){
+        return new Map<Id,Process_automation_by_product_family__c>([SELECT Ready_for_collection_in__c FROM Process_automation_by_product_family__c WHERE Id IN: procesAutmIds]);
     }
 
 

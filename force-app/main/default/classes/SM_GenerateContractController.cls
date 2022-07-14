@@ -2,7 +2,7 @@
 * @description       :
 * @author            : diego.jacanamijoy@gmail.com
 * @group             :
-* @last modified on  : 08/07/2022
+* @last modified on  : 12/07/2022
 * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
 * Modifications Log  : Related oppLineItem to Asset
 * Ver   Date         Author                        Modification
@@ -130,7 +130,7 @@ public with sharing class SM_GenerateContractController {
 
                 /**Create Asset by OpportunityLineItem */
                 Asset asset = new Asset(AccountId = opp.AccountId, Product2 = oppItem.Product2, Product2Id = oppItem.Product2Id, Status = 'New', Name = oppItem.Product2.Name, 
-                                        Price = oppItem.Product2.SM_Monthly_Offer__c, Opportunity_Product__c = oppItem.Id, AC_Price__c = oppItem.SM_Total_AC__c, Price__c = oppItem.UnitPrice);
+                                        Price = oppItem.UnitPrice, Opportunity_Product__c = oppItem.Id, AC_Price__c = oppItem.SM_Total_AC__c);
                 
                 if(!assetsByOppAndProccessAut.containsKey(key)){
                     assetsByOppAndProccessAut.put(key, new List<Asset>{asset});
@@ -194,8 +194,8 @@ public with sharing class SM_GenerateContractController {
             // Boolean isfP = false;
             /**Iterate map assets by automations*/
             for(Asset asset: assetsByOppAndProccessAut.get(key)){
-                acValue = asset.Product2.SM_AC_value__c <> null ? acValue += asset.Product2.SM_AC_value__c : acValue;
-                monOffer = asset.Product2.SM_Monthly_Offer__c <> null ? monOffer += asset.Product2.SM_Monthly_Offer__c : monOffer;
+                acValue = asset.AC_Price__c <> null ? acValue += asset.AC_Price__c : acValue;
+                monOffer = asset.Price <> null ? monOffer += asset.Price : monOffer;
                 isAc = asset.Product2.SM_Requires_AC__c ? asset.Product2.SM_Requires_AC__c : isAc;
                 isRc = asset.Product2.SM_Requires_RC__c ? asset.Product2.SM_Requires_RC__c : isRc;
                 // SFDCMP-211

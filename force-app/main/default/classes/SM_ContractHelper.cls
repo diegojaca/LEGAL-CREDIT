@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : Jonathan S. Pachon Ariza -> jpachon@legal-credit.com
  * @group             : 
- * @last modified on  : 08/07/2022
+ * @last modified on  : 11/07/2022
  * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * Modifications Log 
  * Ver   Date         Author                                                 Modification
@@ -16,6 +16,7 @@ public without sharing class SM_ContractHelper {
     public static WayOfACPaymentEnum wayOfACPayment = new WayOfACPaymentEnum();
     public static ACFrequencyEnum acFrequency = new ACFrequencyEnum();
     public static ContractTypeEnum contractType = new ContractTypeEnum();
+    public static CollectionMainEnum collectionMain = new CollectionMainEnum();
 
     /** This class represents Enum to attribute status (Developer name) */
     public class StatusEnum {
@@ -57,6 +58,12 @@ public without sharing class SM_ContractHelper {
         public String DEPENDENT = 'Dependent';
         public String MASTER = 'Master';
         public String UNIQUE = 'Unique';
+    }
+
+    /** This class represents Enum to attribute Collection_Main_Contract__c of Contract (Developer name) */
+    public class CollectionMainEnum {
+        public String PENDING_DATA_CAPTURE = 'Pending data capture';
+        public String READY_FOR_COLLECTION = 'Ready for collection';
     }
 
     /**
