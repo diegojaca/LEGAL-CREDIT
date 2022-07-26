@@ -2,7 +2,7 @@
  * @description       : Dispute Object OpportunityLineItem
  * @author            : cjimenez@legal-credit.com
  * @group             :
- * @last modified on  : 12/07/2022
+ * @last modified on  : 22/07/2022
  * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * Modifications Log
  * Ver   Date          Author                        Modification
@@ -18,8 +18,8 @@ public with sharing class SM_OpportunityLineItemHandler extends SM_TriggerHandle
     /************* Overwrite DML methods *************/
     override public void beforeInsert() {
         try {
-
             validateProductsByFamily(Trigger.new);
+            updatePrices(Trigger.new);
         } catch (Exception e) {
             System.debug('An error occurred in afterUpdate  OpportunityLineItem '+ e.getTypeName() + ' ' + e.getMessage() + ' ' +e.getStackTraceString());
         }
@@ -43,15 +43,11 @@ public with sharing class SM_OpportunityLineItemHandler extends SM_TriggerHandle
         Map<String,OpportunityLineItem> productByOppLineItem=new Map<String,OpportunityLineItem>();
         Set<Id> productIds = new Set<Id>();
         List<Opportunity> lstOpportunity=new List<Opportunity>();
-
         for(OpportunityLineItem oppLineItem: newOpportunityLineItems){
            productByOppLineItem.put(oppLineItem.Product2id,oppLineItem);
            productIds.add(oppLineItem.Product2id);
         }
-
          validateScreenCapturedProducts(productByOppLineItem);
-
-
     }
 
     /**
@@ -153,7 +149,7 @@ public with sharing class SM_OpportunityLineItemHandler extends SM_TriggerHandle
 
         //get buldles records
         Map<String,Product2> bundlesById = new Map<String,Product2>([SELECT Id,
-                                    (SELECT SM_AC_value_in_the_bundle__c, SM_Monthly_Offer_in_the_bundle__c, SM_Product__c FROM Products_per_bundle__r)
+                                    (SELECT SM_AC_value_in_the_bundle__c, SM_Monthly_Offer_in_the_bundle__c, SM_Product__c, SM_Product__r.SM_Requires_RC__c,SM_Product__r.SM_Requires_AC__c FROM Products_per_bundle__r)
                                     FROM Product2
                                     WHERE Id IN :p2Bundles]);
 
@@ -161,17 +157,19 @@ public with sharing class SM_OpportunityLineItemHandler extends SM_TriggerHandle
         for(PricebookEntry pbe: [SELECT Product2Id, Pricebook2Id FROM PricebookEntry WHERE Pricebook2Id IN :pb2s]){
             pbEntryByOppAndP2.put(pbe.Product2Id + '-'+ pbe.Pricebook2Id, pbe);
         }
-
         //Iterate oppLnItems
         for(OpportunityLineItem oppLnIt: newOpportunityLineItems){
             if(bundlesById.containsKey(oppLnIt.Product2Id)){
                 //create child bundles
                 oppLntItemsToInsert.addAll(createChildBundles(oppLnIt, bundlesById.get(oppLnIt.Product2Id), pbEntryByOppAndP2));
                 //Set value to parent bundle
+                // CJ 21/07/2022 SMMCI-5
                 if(oppLnIt.SM_AC_Price__c <> 0 || oppLnIt.UnitPrice <> 0 || oppLnIt.SM_Monthly_Offer__c <> 0){
                     oppLnIt.SM_AC_Price__c = 0;
                     oppLnIt.UnitPrice = 0;
                     oppLnIt.SM_Monthly_Offer__c = 0;
+                    oppLnIt.Product_Type__c = SM_ContractHelper.contractType.MASTER;
+                    oppLnIt.Is_master__c = true;
                     oppLntItemsToUpdate.add(oppLnIt);
                 }
             }
@@ -201,27 +199,55 @@ public with sharing class SM_OpportunityLineItemHandler extends SM_TriggerHandle
         //Iterate bundles
         for(SM_Product_per_bundle__c childBundle: parentBundle.Products_per_bundle__r){
             //Create oppLntItems by child bundle
+            // CJ 21/07/2022 SMMCI-5
             childsBundles.add(
                 new OpportunityLineItem(
                         OpportunityId = parent.OpportunityId,
+                        Principal_Opportunity_Product__c = parent.id,
                         PricebookEntryId = pbEntryByOppAndP2.get(childBundle.SM_Product__c + '-' + parent.Opportunity.Pricebook2Id).Id,
                         SM_AC_Price__c = childBundle.SM_AC_value_in_the_bundle__c,
-                        UnitPrice = childBundle.SM_AC_value_in_the_bundle__c,
-                        SM_Monthly_Offer__c = childBundle.SM_Monthly_Offer_in_the_bundle__c
+                        SM_Total_AC__c = childBundle.SM_Product__r.SM_Requires_AC__c == true ? childBundle.SM_AC_value_in_the_bundle__c : 0,
+                        UnitPrice = childBundle.SM_Product__r.SM_Requires_RC__c == true ? childBundle.SM_Monthly_Offer_in_the_bundle__c : 0,
+                        SM_Monthly_Offer__c = childBundle.SM_Monthly_Offer_in_the_bundle__c,
+                        Product_Type__c = SM_ContractHelper.contractType.DEPENDENT
                         )
             );
         }
         return childsBundles;
     }
 
+      /**
+    * @description update Prices Unit Product 
+    * @author cjimenez@legal-credit.com | 22-02-2021 SMMCI-5
+    * @param oppLineItem
+    **/
+    public void updatePrices(List<OpportunityLineItem> newOpportunityLineItems){
+        Id recordTypeUnitProduct = SM_Utils.getRecordTypeIdByDeveloperName('Product2', 'Unit Product');
+        Set<String> productIds = new Set<String>();
+        for(OpportunityLineItem oppLnIt: newOpportunityLineItems){
+             productIds.add(oppLnIt.Product2Id);
+        }
+        Map<String,Product2> productById = new Map<String,Product2>([SELECT RecordTypeId,Id,SM_Requires_AC__c,SM_Requires_RC__c,SM_Monthly_Offer__c,SM_AC_value__c,
+                                           (SELECT SM_AC_value_in_the_bundle__c, SM_Monthly_Offer_in_the_bundle__c, SM_Product__c FROM Products_per_bundle__r)
+                                           FROM Product2
+                                           WHERE Id IN :productIds]);
 
+        for(OpportunityLineItem oppLnIt: newOpportunityLineItems){
+            Product2 product = productById.get(oppLnIt.Product2Id);
+            if(product.RecordTypeId == recordTypeUnitProduct){  
+                oppLnIt.SM_Total_AC__c = product.SM_Requires_AC__c == true ? product.SM_AC_value__c : 0;
+                oppLnIt.UnitPrice = product.SM_Requires_RC__c == true ? product.SM_Monthly_Offer__c : 0;
+                oppLnIt.Product_Type__c =SM_ContractHelper.contractType.UNIQUE;
+            }
+        }                                 
+    }
     /**
     * @description This method shows the errors on the screen
     * @author cjimenez@legal-credit.com | 22-02-2021
     * @param oppLineItem
     **/
     public void showErrorMessage(OpportunityLineItem oppLineItem){
-         //oppLineItem.addError(LABEL.SM_OPPORTUNITYLINEITEM_MASSAGE);
+         oppLineItem.addError(LABEL.SM_OPPORTUNITYLINEITEM_MASSAGE);
     }
 
 }

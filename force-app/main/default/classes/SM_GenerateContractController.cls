@@ -2,7 +2,7 @@
 * @description       :
 * @author            : diego.jacanamijoy@gmail.com
 * @group             :
-* @last modified on  : 12/07/2022
+* @last modified on  : 19/07/2022
 * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
 * Modifications Log  : Related oppLineItem to Asset
 * Ver   Date         Author                        Modification
@@ -43,7 +43,7 @@ public with sharing class SM_GenerateContractController {
         idsFormated += '\')';
         
         String query = 'SELECT AccountId,Account.PersonEmail, SM_Opportunity_Disposition__c, SM_Company_Setting__r.SM_IVU_State_Amount__c, SM_Company_Setting__r.SM_IVU_Municipal_Amount__c, (SELECT OpportunityId, SM_Total_AC__c, UnitPrice, Is_master__c, Product_Type__c, Principal_Opportunity_Product__c, Product2.SM_Way_to_pay__c, Product2.SM_Plan_Months__c, Product2.Id, Product2Id, Product2.Name, Product2.SM_Requires_AC__c,Product2.SM_Requires_RC__c,Product2.SM_Full_Payment__c,Product2.SM_Monthly_Offer__c, Product2.SM_AC_value__c, Product2.SM_RC_value__c, ';
-        query += ' Product2.Process_automation_by_product_family__c, Product2.Process_automation_by_product_family__r.SM_Generates_dispute__c, Product2.Process_automation_by_product_family__r.SM_Type_of_contract__c ';
+        query += ' Product2.Process_automation_by_product_family__c, Product2.Process_automation_by_product_family__r.SM_Generates_dispute__c, Product2.Process_automation_by_product_family__r.SM_Type_of_contract__c, Product2.Process_automation_by_product_family__r.Contract_activation_form__c, Product2.Process_automation_by_product_family__r.Start_assets_in_fee_number__c ';
         query += ' FROM OpportunityLineItems ORDER BY Is_master__c desc) FROM Opportunity WHERE Id In ' + idsFormated;
         return SM_OpportunityHelper.getOpportunitiesByDinamicQuery(query);
     }
@@ -96,6 +96,8 @@ public with sharing class SM_GenerateContractController {
                                                      SM_Email_to_send_contract__c = opp.Account.PersonEmail,
                                                      SM_Process_automation_by_product_family__c = oppItem.Product2.Process_automation_by_product_family__c,
                                                      SM_Generates_dispute__c = oppItem.Product2.Process_automation_by_product_family__r.SM_Generates_dispute__c,
+                                                     Contract_activation_form__c = oppItem.Product2.Process_automation_by_product_family__r.Contract_activation_form__c,
+                                                     Start_assets_in_fee_number__c = oppItem.Product2.Process_automation_by_product_family__r.Start_assets_in_fee_number__c,
                                                      RecordTypeId = recordTypeIdStr,
                                                      SM_Way_of_AC_Payment__c = wayOfACPayment,
                                                      SM_Number_of_AC_Fees__c = numberOfACFees,
@@ -253,10 +255,13 @@ public with sharing class SM_GenerateContractController {
         List<Asset> assetsToInsert = new List<Asset>();
         for(String key: assetsByOppAndProccessAut.keySet()){
             for(Asset asset: assetsByOppAndProccessAut.get(key)){
-                asset.SM_Contract__c = contractByOppAndProccessAut.get(key).Id;
+                Contract contractAux = contractByOppAndProccessAut.get(key);
+                asset.SM_Contract__c = contractAux.Id;
                 // JSPA - SFDCMP-239
-                asset.SM_Email_to_send_contract__c = contractByOppAndProccessAut.get(key).SM_Email_to_send_contract__c;
-                asset.Principal_Contract__c = contractByOppAndProccessAut.get(key).Principal_Contract__r.Id;
+                asset.SM_Email_to_send_contract__c = contractAux.SM_Email_to_send_contract__c;
+                asset.Principal_Contract__c = contractAux.Principal_Contract__r?.Id;
+                asset.Contract_activation_form__c = contractAux.Contract_activation_form__c;
+                asset.Start_assets_in_fee_number__c = contractAux.Start_assets_in_fee_number__c;
                 assetsToInsert.add(asset);
             }
         }

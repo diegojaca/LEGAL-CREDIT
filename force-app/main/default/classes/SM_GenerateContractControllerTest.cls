@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : diego.jacanamijoy@gmail.com
  * @group             : 
- * @last modified on  : 08/07/2022
+ * @last modified on  : 19/07/2022
  * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * Modifications Log 
  * Ver   Date         Author                        Modification
@@ -35,6 +35,8 @@ public with sharing class SM_GenerateContractControllerTest {
         paf.Name = 'Depend proccess';
         paf.SM_Type_of_contract__c = 'Legal Credit Solution';
         paf.SM_Generates_dispute__c = true;
+        paf.Contract_activation_form__c = 'Future activation with conditions';
+        paf.Start_assets_in_fee_number__c = 10;
         insert paf;
 
         Product2 p2Depend = SM_TestSmartDataFactory.getProduct2().clone(false, false, false, false);
@@ -87,9 +89,18 @@ public with sharing class SM_GenerateContractControllerTest {
             System.assertEquals(1, [SELECT Count() FROM Contract WHERE Contract_type__c =: SM_ContractHelper.contractType.MASTER], 'Must be return one record');
             //Get master
             Contract master = [SELECT Id FROM Contract WHERE Contract_type__c =: SM_ContractHelper.contractType.MASTER];
+            Contract dependent = [SELECT Contract_activation_form__c, Start_assets_in_fee_number__c
+                                        , SM_Process_automation_by_product_family__r.Contract_activation_form__c, SM_Process_automation_by_product_family__r.Start_assets_in_fee_number__c
+                                    FROM Contract WHERE Contract_type__c =: SM_ContractHelper.contractType.DEPENDENT];
+
+            System.assertEquals(dependent.SM_Process_automation_by_product_family__r.Contract_activation_form__c, dependent.Contract_activation_form__c, 'Must be return the same value');
+            System.assertEquals(dependent.SM_Process_automation_by_product_family__r.Start_assets_in_fee_number__c, dependent.Start_assets_in_fee_number__c, 'Must be return the same value');
 
             System.assertEquals(1, [SELECT Count() FROM Contract WHERE Contract_type__c =: SM_ContractHelper.contractType.DEPENDENT AND Principal_Contract__c =: master.Id], 'Must be return one dependent contract');
-            System.assertEquals(2, [SELECT Count() FROM Asset WHERE Principal_Contract__c =: master.Id], 'Must be return two dependent asset');
+            Asset[] dependentAssets = [SELECT Contract_activation_form__c, Start_assets_in_fee_number__c FROM Asset WHERE Principal_Contract__c =: master.Id];
+            System.assertEquals(2, dependentAssets.size(), 'Must be return two dependent asset');
+            System.assertEquals(dependent.Contract_activation_form__c, dependentAssets[0].Contract_activation_form__c, 'Must be return two dependent asset');
+            System.assertEquals(dependent.Start_assets_in_fee_number__c, dependentAssets[0].Start_assets_in_fee_number__c, 'Must be return two dependent asset');
         Test.stopTest();
     }
 }

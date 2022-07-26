@@ -2,7 +2,7 @@
  * @description       :
  * @author            : Jonathan S. Pachon Ariza -> jpachon@legal-credit.com
  * @group             :
- * @last modified on  : 13/07/2022
+ * @last modified on  : 22/07/2022
  * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * Modifications Log
  * Ver   Date         Author                                                 Modification
@@ -48,6 +48,8 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
         validatContractChangeEmail(Trigger.new, Trigger.oldMap);
         // SRQ - SFDCMP-368
         updatePaymentMethodsTypeRelatedRecords(Trigger.new, Trigger.oldMap);
+        // SMMCI-16
+        SM_ValidateDependentContracts.checkReadyForCollectionContracts(Trigger.new, Trigger.oldMap);
     }
 
     override public void beforeUpdate() {
