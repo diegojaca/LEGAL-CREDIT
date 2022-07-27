@@ -441,5 +441,34 @@ public with sharing class SM_ContractHandlerTest {
         // // System.assertEquals(paymentMethodACH2.Id, updatedACHOrder.SM_Payment_Method__c, 'The new payment method record is not the expected.');
     }
 
+    @IsTest
+    static void changeContractFutureActivationType(){
 
+        //Create contract with contract activation = “Future Activation with conditions“
+        Contract contract = new Contract(
+            Status = 'Draft',
+            StartDate = Date.today(),
+            ContractTerm = 8,
+            Contract_activation_form__c = 'Future activation with conditions',
+            Expected_date_for_contract_activation__c = System.today().addDays(-1),
+            Validation_of_conditions__c = 'Meets the Conditions'
+        );
+        insert contract;
+
+        /** Map with old values */
+        Map<Id, SObject> oldRecordsMap = new Map<Id, SObject>{contract.Id => contract};
+        
+        /** Contract with new values */
+        Contract contractNewvalues = contract.clone();
+        contractNewvalues.Status = 'Complete information';
+
+        /** Contract list with new values */
+        List<Contract> newRecords = new List<Contract>{contractNewvalues};
+
+        Test.startTest();
+            SM_ContractHandler.checkContractFutureActivationType(newRecords, oldRecordsMap);
+        Test.stopTest();
+
+        System.assertEquals(true, contractNewvalues.getErrors()[0].getMessage().contains(Label.FUTURE_ACTIVATION_WITH_CONDITIONS_ERROR_MESSAGE), 'Must be return error in updated');
+    }
 }

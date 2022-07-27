@@ -2,7 +2,7 @@
  * @description       :
  * @author            : Jonathan S. Pachon Ariza -> jpachon@legal-credit.com
  * @group             :
- * @last modified on  : 22/07/2022
+ * @last modified on  : 27/07/2022
  * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * Modifications Log
  * Ver   Date         Author                                                 Modification
@@ -60,7 +60,9 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
         // JSPA - SFDCMP-384
         validateIfHasPendingApprovalChargentOrders(Trigger.new, Trigger.oldMap);
         //DAJC SMMCI-14
-        updateCollectionMain(Trigger.new, Trigger.oldMap); 
+        updateCollectionMain(Trigger.new, Trigger.oldMap);
+        // SMMCI-18
+        checkContractFutureActivationType(Trigger.new, Trigger.oldMap); 
     }
 
 
@@ -929,5 +931,32 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
             update contractUpdate;
         } 
      }
+
+    /**
+    * @description 
+    * @author Diego Jacanamijoy -> djacanamijoy@legal-credit.com | 27/07/2022 
+    * @param newRecords 
+    * @param oldRecordsMap 
+    **/
+    public static void checkContractFutureActivationType(List<Contract> newRecords, Map<Id, SObject> oldRecordsMap){
+
+        for (Contract newCt : newRecords) {
+            Contract oldCt = (Contract) oldRecordsMap.get(newCt.Id);
+            /** Validate if change Status */
+            if (SM_Utils.isChangedField(newCt, oldCt, 'Status') 
+                && newCt.Status == SM_ContractHelper.status.COMPLETE_INFORMATION
+                && newCt.Contract_activation_form__c == SM_ContractHelper.collectionActivationForm.FUTURE_ACTIVATION)
+            {
+                /** Chek valid data to update status */
+                if (newCt.Expected_date_for_contract_activation__c < System.today()
+                    || newCt.Validation_of_conditions__c <> SM_ContractHelper.collectionValidationsConditions.MEETS_THE_CONDITIONS
+                    || newCt.Start_assets_in_fee_number__c == null)
+                {
+                    /** Set user error */
+                    newCt.addError(Label.FUTURE_ACTIVATION_WITH_CONDITIONS_ERROR_MESSAGE);
+                }
+            }
+        }
+    }
 
 }
