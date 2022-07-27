@@ -2,44 +2,17 @@
 <Package xmlns="http://soap.sforce.com/2006/04/metadata">
 	<types>
 		<members>SM_ContractHandler</members>
-		<members>SM_GenerateContractController</members>
-		<members>SM_GenerateContractControllerTest</members>
-		<members>SM_ValidateDependentContracts</members>
-		<members>SM_ValidateDependentContractsTest</members>
+		<members>SM_ContractHelper</members>
 		<name>ApexClass</name>
 	</types>
 	<types>
-		<members>Asset.Contract_activation_form__c</members>
-		<members>Asset.Start_assets_in_fee_number__c</members>
-		<members>Contract.Contract_activation_form__c</members>
-		<members>Contract.Start_assets_in_fee_number__c</members>
-		<members>Process_automation_by_product_family__c.Contract_activation_form__c</members>
-		<members>Process_automation_by_product_family__c.Start_assets_in_fee_number__c</members>
+		<members>Contract.Expected_date_for_contract_activation__c</members>
+		<members>Contract.Validation_of_conditions__c</members>
 		<name>CustomField</name>
 	</types>
 	<types>
-		<members>AC_SPLIT_DATE_ERROR</members>
-		<members>AC_START_DATE_ERROR</members>
-		<members>BILLING_FIELDS_ERROR</members>
+		<members>FUTURE_ACTIVATION_WITH_CONDITIONS_ERROR_MESSAGE</members>
 		<name>CustomLabel</name>
-	</types>
-	<types>
-		<members>Asset-Asset Layout</members>
-		<members>Contract-Credit Rectification</members>
-		<members>Contract-Harmoney</members>
-		<members>Process_automation_by_product_family__c-Process automation by product family Layout</members>
-		<name>Layout</name>
-	</types>
-	<types>
-		<members>Contract.Harmoney</members>
-		<members>Contract.SM_Credit_Rectification</members>
-		<members>Contract.SM_Legal_Credit_Solution</members>
-		<name>RecordType</name>
-	</types>
-	<types>
-		<members>Contract.VR010_ReadyForCollectionRequired</members>
-		<members>Contract.VR011_DontChangeMasterCollectionMainFiel</members>
-		<name>ValidationRule</name>
 	</types>
 	<version>53.0</version>
 </Package>
