@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : Jonathan S. Pachon Ariza -> jpachon@legal-credit.com
  * @group             : 
- * @last modified on  : 19/07/2022
+ * @last modified on  : 27/07/2022
  * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * Modifications Log 
  * Ver   Date         Author                                                 Modification
@@ -18,6 +18,7 @@ public without sharing class SM_ContractHelper {
     public static ContractTypeEnum contractType = new ContractTypeEnum();
     public static CollectionMainEnum collectionMain = new CollectionMainEnum();
     public static CollectionActivationForm collectionActivationForm = new CollectionActivationForm();
+    public static CollectionValidationOfConditions collectionValidationsConditions = new CollectionValidationOfConditions();
 
     /** This class represents Enum to attribute status (Developer name) */
     public class StatusEnum {
@@ -71,6 +72,12 @@ public without sharing class SM_ContractHelper {
     public class CollectionActivationForm {
         public String FUTURE_ACTIVATION = 'Future activation with conditions';
         public String INMEDIATE_ACTIVATION = 'Immediate activation';
+    }
+
+    /** This class represents Enum to attribute Validation_of_conditions__c of Contract (Developer name) */
+    public class CollectionValidationOfConditions {
+        public String MEETS_THE_CONDITIONS = 'Meets the Conditions';
+        public String WAITING_FOR_CONDITIONS = 'Waiting for conditions to be met';
     }
 
     /**
