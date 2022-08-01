@@ -35,7 +35,6 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
         // JSPA - SFDCMP-152
         updateStageOpportunity(Trigger.new, Trigger.oldMap);
         // JSPA - SFDCMP-158
-        //TODO ADD VALIDATIONS TO DEPENDENT CONTRACTS
         processAssetsByContractStatusChange(Trigger.new, Trigger.oldMap);
         // JSPA - SFDCMP-344 - Pending to delete because this logic was moved to SM_PaymentProcessController
         //updatePaymentMethodInChildRecords(Trigger.new, Trigger.oldMap);
@@ -188,15 +187,18 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
     * @param newContracts
     * @param oldContractsMap
     **/
-    //TODO ADD VALIDATION TO DEPENDENT CONTRACT
     public void processChangesToSendContract(List<Contract> newContracts, Map<Id, SObject> oldContractsMap) {
+
         Map<String, Contract> contractsByIds = new Map<String, Contract>();
         Map<String, String> disputeStatusByContractId = new  Map<String, String>();
+        List<String> validStatusToSendPDF = new List<String>{SM_ContractHelper.status.ACTIVATED, SM_ContractHelper.status.PAYMENT_PROCESS};
+
         for (Contract newContract : newContracts) {
               Contract oldContract = (contract) oldContractsMap.get(newContract.Id);
-            if((newContract.SM_Agreement_Status__c == null
-                && ((SM_Utils.isChangedField(newContract, oldContract, 'SM_Send_Agreement__c') && newContract.SM_Send_Agreement__c )
-                || (SM_Utils.isChangedField(newContract, oldContract, 'SM_Payment_Received__c') && newContract.SM_Payment_Received__c ) ) )  ) {
+            if((validStatusToSendPDF.contains(newContract.Status) && newContract.Contract_Type__c == SM_ContractHelper.contractType.DEPENDENT)
+                ||(newContract.SM_Agreement_Status__c == null
+                    && ((SM_Utils.isChangedField(newContract, oldContract, 'SM_Send_Agreement__c') && newContract.SM_Send_Agreement__c )
+                    || (SM_Utils.isChangedField(newContract, oldContract, 'SM_Payment_Received__c') && newContract.SM_Payment_Received__c ) ) )  ) {
                 // contractByIds.add(newContract.Id);
                 contractsByIds.put(newContract.Id, newContract);
                 disputeStatusByContractId.put(newContract.Id, SM_DisputeHelper.status.PENDING);
@@ -414,7 +416,13 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
         Map<String, String> contractStatusById = new Map<String, String>();
         for (Contract newContract : newContracts) {
             if (SM_Utils.isChangedField(newContract, (Contract)oldContractsMap.get(newContract.Id), 'Status') && statusToUpdateAssets.contains(newContract.Status)) {
-                contractStatusById.put(newContract.Id, newContract.Status);
+                
+                /** Add validation when change to Activate status */
+                if(newContract.Status <> SM_ContractHelper.status.ACTIVATED 
+                    || (newContract.Status == SM_ContractHelper.status.ACTIVATED && newContract.Collection_Main_Contract__c == SM_ContractHelper.collectionMain.READY_FOR_COLLECTION))
+                {
+                    contractStatusById.put(newContract.Id, newContract.Status);
+                }
             }
         }
         if(!contractStatusById.isEmpty()){
