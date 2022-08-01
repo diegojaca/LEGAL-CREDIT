@@ -11,9 +11,10 @@ public with sharing class SM_ContractHandlerTest {
 
 
     private static String EMAIL_1 = 'legal_credit@gmail.com.invalid';
+
     @TestSetup
     static void makeData(){
-    /* Data to test five9 list and reminder tasks */
+    // Data to test five9 list and reminder tasks
         Test.startTest();
             insert new SM_Bypasser__c(SM_Disable_Validation_Rules__c = false, SetupOwnerId = UserInfo.getProfileId());
             Account account = SM_TestSmartDataFactory.getPersonAccount();
@@ -470,5 +471,65 @@ public with sharing class SM_ContractHandlerTest {
         Test.stopTest();
 
         System.assertEquals(true, contractNewvalues.getErrors()[0].getMessage().contains(Label.FUTURE_ACTIVATION_WITH_CONDITIONS_ERROR_MESSAGE), 'Must be return error in updated');
+    }
+
+    @IsTest
+    static void checkUpdateMasterStatus(){
+
+        /** Insert Account */
+        Account account = SM_TestSmartDataFactory.getPersonAccount();
+        account.PersonEmail='legal_credit@gmail.com.invalid';
+        insert account;
+
+        //List of contracts to insert
+        List<Contract> contractsToInsert = new List<Contract>();
+
+        /** Create master contract */
+        Contract master = new Contract(
+            AccountId = account.Id,
+            Status = 'Draft',
+            StartDate = Date.today(),
+            ContractTerm = 8,
+            Contract_Type__c = 'Master',
+            Collection_Main_Contract__c = 'Pending data capture'
+        );
+        insert master;
+
+        /** Add dependent contracts */
+        for(Integer i = 0; i < 5; i++){
+
+            contractsToInsert.add(new Contract(
+                AccountId = account.Id,
+                Status = 'Draft',
+                StartDate = Date.today(),
+                ContractTerm = 8,
+                Contract_Type__c = 'Dependent',
+                Principal_Contract__c = master.Id,
+                Collection_Main_Contract__c = 'Ready for collection',
+                Contract_activation_form__c = 'Immediate activation	',
+                SM_Requires_AC_Payment__c = true,
+                SM_Payment_day__c = 5,
+                SM_Frecuency__c = 'Monthly'
+            ));
+        }
+
+        insert contractsToInsert;
+
+        /** Map with old values */
+        Map<Id, SObject> oldRecordsMap = new Map<Id, SObject>{master.Id => master};
+        
+        /** Contract with new values */
+        Contract contractNewvalues = master.clone(true, false, false, false);
+        contractNewvalues.Status = SM_ContractHelper.status.PAYMENT_PROCESS;
+
+        /** Contract list with new values */
+        List<Contract> newRecords = new List<Contract>{contractNewvalues};
+
+        Test.startTest();
+            SM_ContractHandler.checkUpdateMasterStatus(newRecords, oldRecordsMap);
+        Test.stopTest();
+
+        System.assertEquals(5, [SELECT Count() FROM Contract WHERE Contract_Type__c = 'Dependent'], 'Must be return 5 dependent records');
+        System.assertEquals(5, [SELECT Count() FROM Contract WHERE Contract_Type__c = 'Dependent' AND Status = 'Draft'], 'Must be return 5 dependent activated records');
     }
 }

@@ -2,7 +2,7 @@
  * @description       :
  * @author            : Jonathan S. Pachon Ariza -> jpachon@legal-credit.com
  * @group             :
- * @last modified on  : 27/07/2022
+ * @last modified on  : 01/08/2022
  * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * Modifications Log
  * Ver   Date         Author                                                 Modification
@@ -35,6 +35,7 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
         // JSPA - SFDCMP-152
         updateStageOpportunity(Trigger.new, Trigger.oldMap);
         // JSPA - SFDCMP-158
+        //TODO ADD VALIDATIONS TO DEPENDENT CONTRACTS
         processAssetsByContractStatusChange(Trigger.new, Trigger.oldMap);
         // JSPA - SFDCMP-344 - Pending to delete because this logic was moved to SM_PaymentProcessController
         //updatePaymentMethodInChildRecords(Trigger.new, Trigger.oldMap);
@@ -50,6 +51,8 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
         updatePaymentMethodsTypeRelatedRecords(Trigger.new, Trigger.oldMap);
         // SMMCI-16
         SM_ValidateDependentContracts.checkReadyForCollectionContracts(Trigger.new, Trigger.oldMap);
+        // SMMCI-28
+        checkUpdateMasterStatus(Trigger.new, Trigger.oldMap);
     }
 
     override public void beforeUpdate() {
@@ -185,6 +188,7 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
     * @param newContracts
     * @param oldContractsMap
     **/
+    //TODO ADD VALIDATION TO DEPENDENT CONTRACT
     public void processChangesToSendContract(List<Contract> newContracts, Map<Id, SObject> oldContractsMap) {
         Map<String, Contract> contractsByIds = new Map<String, Contract>();
         Map<String, String> disputeStatusByContractId = new  Map<String, String>();
@@ -956,6 +960,46 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
                     newCt.addError(Label.FUTURE_ACTIVATION_WITH_CONDITIONS_ERROR_MESSAGE);
                 }
             }
+        }
+    }
+
+    /**
+    * @description This method validate change status of master contracts, to update dependets
+    * @author Diego Jacanamijoy -> djacanamijoy@legal-credit.com | 01/08/2022 
+    * @param newRecords 
+    * @param oldRecordsMap 
+    **/
+    public static void checkUpdateMasterStatus(List<Contract> newRecords, Map<Id, SObject> oldRecordsMap){
+
+        Set<Id> masterContractIds = new Set<Id>();
+
+        for (Contract newCt : newRecords) {
+            Contract oldCt = (Contract) oldRecordsMap.get(newCt.Id);
+            /** Validate if change Status */
+            if (SM_Utils.isChangedField(newCt, oldCt, 'Status') 
+                && newCt.Contract_Type__c == SM_ContractHelper.contractType.MASTER
+                && (newCt.Status == SM_ContractHelper.status.ACTIVATED
+                || newCt.Status == SM_ContractHelper.status.PAYMENT_PROCESS))
+            {
+                masterContractIds.add(newCt.Id);
+            }
+        }
+
+        /** Get dependent contracts by master ids */
+        List<Contract> dependentContracts = [SELECT 
+                                                Principal_Contract__r.Status 
+                                            FROM Contract 
+                                            WHERE Principal_Contract__c IN: masterContractIds 
+                                            AND Contract_Type__c =: SM_ContractHelper.contractType.DEPENDENT
+                                            AND Collection_Main_Contract__c =: SM_ContractHelper.collectionMain.READY_FOR_COLLECTION];
+
+        for(Contract dependent: dependentContracts){
+            dependent.Status = dependent.Principal_Contract__r.Status;
+        }
+
+        /** Update dependent contracts */
+        if(!dependentContracts.isEmpty()){
+            update dependentContracts;
         }
     }
 
