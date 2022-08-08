@@ -2,8 +2,8 @@
  * @description       :
  * @author            : Jonathan S. Pachon Ariza -> jpachon.ariza@gmail.com
  * @group             :
- * @last modified on  : 09-07-2021
- * @last modified by  : Jonathan S. Pachon Ariza -> jpachon.ariza@gmail.com
+ * @last modified on  : 05/08/2022
+ * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * Modifications Log
  * Ver   Date         Author                                                 Modification
  * 1.0   04-25-2021   Jonathan S. Pachon Ariza -> jpachon.ariza@gmail.com   Initial Version
@@ -47,18 +47,32 @@ public without sharing class SM_ACHOrderHandler extends SM_TriggerHandler{
         updateAssetsFee(Trigger.new, Trigger.oldMap);
         // JSPA - SFDCMP-344
         updatePaymentMethodInChildRecords(Trigger.new, Trigger.oldMap);
-        
+        //SMMCI-28
+        checkPaymentStatus(Trigger.new, Trigger.oldMap);
     }
 
     /************* Auxiliar methods *************/
     private void createAssetsFee(List<SM_ACH_Order__c> newRecords, Map<Id, SObject> oldRecordsMap) {
         System.debug('Executing createAssetsFee');
         Map<String, SM_ACH_Order__c> achOrderIdByContractId = new Map<String, SM_ACH_Order__c>();
+        Set<ID> idsContract = new Set<ID>();
         for (SM_ACH_Order__c achOrder : newRecords) {
+            idsContract.add(achOrder.SM_Contract__c);
             if (achOrder.SM_Payment_Type__c == 'Subscription' || achOrder.SM_Payment_Type__c == 'Fee') achOrderIdByContractId.put(achOrder.SM_Contract__c, achOrder);
         }
+        // CJ 06/08/2022 SMMCI-27
         if (!achOrderIdByContractId.isEmpty()) {
-            List<Asset> assetsToProcess = [SELECT Id, SM_Contract__c, Product2.SM_Plan_Months__c, Product2.SM_Way_to_pay__c, Product2.SM_Monthly_Offer__c FROM Asset WHERE Price > 0 AND SM_Contract__c IN :achOrderIdByContractId.keySet() AND SM_Quantity_of_fees__c = 0];
+            for(Contract ctr : [SELECT id, (SELECT  id, Principal_Contract__c, SM_Contract__r.Contract_activation_form__c,SM_Contract__c,SM_Contract__r.Collection_Main_Contract__c FROM Assets1__r ) FROM Contract WHERE ID IN: idsContract ]){
+                if(!ctr.Assets1__r.isEmpty()){
+                    for(Asset asset: ctr.Assets1__r)
+                        if(asset.SM_Contract__r.Contract_activation_form__c == SM_ContractHelper.collectionActivationForm.INMEDIATE_ACTIVATION
+                           && asset.SM_Contract__r.Collection_Main_Contract__c == SM_ContractHelper.collectionMain.READY_FOR_COLLECTION){
+                            SM_ACH_Order__c achOrder = achOrderIdByContractId.get(asset.Principal_Contract__c);
+                            achOrderIdByContractId.put(asset.SM_Contract__c, achOrder);
+                        }
+                }
+            }
+            List<Asset> assetsToProcess = [SELECT Id, SM_Contract__c, Principal_Contract__c, Product2.SM_Plan_Months__c, Product2.SM_Way_to_pay__c, Product2.SM_Monthly_Offer__c FROM Asset WHERE Price > 0 AND SM_Contract__c IN :achOrderIdByContractId.keySet() AND SM_Quantity_of_fees__c = 0];
             // SFDCMP-294 - JSPA
             List<SM_Asset_Fee__c> assetsFeeToInsert = new List<SM_Asset_Fee__c>();
             SM_Asset_Fee__c assetFee;
@@ -78,10 +92,12 @@ public without sharing class SM_ACHOrderHandler extends SM_TriggerHandler{
                 for (Decimal i = 0; i < qtyOfAssetsFeeToCreate; i++) {
                     if ((assetFeeType == 'Subscription') || (assetFeeType == 'Fee' && i == 0)) {
                         feeToCollect = true;
-                        nextTransactionDate = achOrderIdByContractId.get(asset.SM_Contract__c).SM_Next_Transaction_Date__c;
+                        nextTransactionDate = asset.Principal_Contract__c != null && achOrderIdByContractId.containsKey(asset.Principal_Contract__c) ? achOrderIdByContractId.get(asset.Principal_Contract__c).SM_Next_Transaction_Date__c : 
+                                              achOrderIdByContractId.get(asset.SM_Contract__c).SM_Next_Transaction_Date__c;
                     } else {
                         feeToCollect = false;
                     }
+                    // CJ SMMCI-10 25/07/2022
                     assetFee = new SM_Asset_Fee__c(
                         SM_Asset__c = asset.Id,
                         SM_Position__c = i + 1,
@@ -89,9 +105,11 @@ public without sharing class SM_ACHOrderHandler extends SM_TriggerHandler{
                         SM_Amount__c = asset.Product2.SM_Monthly_Offer__c,
                         SM_Contract__c = asset.SM_Contract__c,
                         SM_Status__c = 'Scheduled',
-                        SM_ACH_Order__c = achOrderIdByContractId.get(asset.SM_Contract__c).Id,
+                        SM_ACH_Order__c = asset.Principal_Contract__c != null && achOrderIdByContractId.containsKey(asset.Principal_Contract__c) ? achOrderIdByContractId.get(asset.Principal_Contract__c).id : 
+                        achOrderIdByContractId.get(asset.SM_Contract__c).id,
                         SM_Fee_to_collect__c = feeToCollect,
                         SM_Date__c = nextTransactionDate,
+                        SM_PrincipalContract__c = asset.Principal_Contract__c != null ? asset.Principal_Contract__c : null,
                         Name = assetFeeType + '-' + (i + 1)
                     );
                     assetsFeeToInsert.add(assetFee);
@@ -103,24 +121,121 @@ public without sharing class SM_ACHOrderHandler extends SM_TriggerHandler{
             }
         }
     }
+    /**
+    * @description This method create asset fees and update the asset with chargent order record
+    * @author Cjimenez | 02/08/2022
+    * @param contractIds,achOrderIdByContractId
+    **/
+    public static Map<Id,List<SM_Asset_Fee__c>> createAssetFeesProcess(List<String> contractIds,Map<String,SM_ACH_Order__c> achOrderIdByContractId){
+        // Get assets by contract ids
+        Map<String,Asset> ctrIdsByAsset = new Map<String,Asset>();
+        List<Asset> assetsToProcess = [SELECT Id,Product2.SM_Requires_AC__c,SM_Contract__c,Principal_Contract__c, Product2.SM_Plan_Months__c, Product2.SM_Way_to_pay__c, Product2.SM_Monthly_Offer__c FROM Asset WHERE SM_Contract__c IN :contractIds AND Price > 0];
+        
+        List<Asset> assetToUpdate = new List<Asset>();
+        Map<Id,List<SM_Asset_Fee__c>> assetsFeeToInsert = new Map<Id,List<SM_Asset_Fee__c>>();
+        SM_Asset_Fee__c assetFee;
+        for (Asset asset : assetsToProcess) {
+            //String chargentOrderId = chargentOrderByContractId.get(asset.SM_Contract__c);
+            Decimal qtyOfAssetsFeeToCreate = 0;
+            Boolean feeToCollect = false;
+            String assetFeeType = '';
+            if (asset.Product2.SM_Way_to_pay__c == 'Subscription') {
+                qtyOfAssetsFeeToCreate = 1;
+                assetFeeType = 'Subscription';
+            }
+            // CJ SMMCI-23 27/07/2022
+            if (asset.Product2.SM_Way_to_pay__c == 'Fix Term') {
+                qtyOfAssetsFeeToCreate = asset.Product2.SM_Plan_Months__c;
+                assetFeeType = 'Fee';
+            }
+             // CJ SMMCI-10 25/07/2022
+            SM_ACH_Order__c achOrder = achOrderIdByContractId.containsKey(asset.Principal_Contract__c) ? achOrderIdByContractId.get(asset.Principal_Contract__c) : null;
+            Decimal position = 0; 
+            if(achOrder != null)
+               position = asset.Product2.SM_Requires_AC__c == true ? achOrder.SM_Fee_to_collect__c : achOrder.SM_Fee_to_collect__c + 1;
+            for (Decimal i = position; i < qtyOfAssetsFeeToCreate; i++) {
+                if ((assetFeeType == 'Subscription') || (assetFeeType == 'Fee' && i == 0)) {
+                    feeToCollect = true;
+                } else {
+                    feeToCollect = false;
+                }
+                if(!assetsFeeToInsert.containsKey(asset.SM_Contract__c)){
+                    // CJ SMMCI-10 25/07/2022
+                    assetsFeeToInsert.put(
+                    	asset.SM_Contract__c,
+                    	new List<SM_Asset_Fee__c>{
+                            new SM_Asset_Fee__c(
+                                SM_Asset__c = asset.id,
+                                SM_Position__c = i + 1,
+                                SM_Type__c = assetFeeType,
+                                SM_Amount__c = asset.Product2.SM_Monthly_Offer__c,
+                                SM_Contract__c = asset.SM_Contract__c,
+                                SM_Status__c = 'Scheduled',
+                                SM_ACH_Order__c = achOrder != null ? achOrder.id : null,
+                                SM_Fee_to_collect__c = feeToCollect,
+                                SM_Date__c = achOrder.SM_Next_Transaction_Date__c,
+                                SM_PrincipalContract__c = asset.Principal_Contract__c != null ? asset.Principal_Contract__c : null,
+                                Name = assetFeeType + '-' + (i + 1)
+                        	)
+                        }
+                	);
+                }
+                else{
+                    assetsFeeToInsert.get(asset.SM_Contract__c).add(
+                        new SM_Asset_Fee__c(
+                            SM_Asset__c = asset.id,
+                            SM_Position__c = i + 1,
+                            SM_Type__c = assetFeeType,
+                            SM_Amount__c = asset.Product2.SM_Monthly_Offer__c,
+                            SM_Contract__c = asset.SM_Contract__c,
+                            SM_Status__c = 'Scheduled',
+                            SM_ACH_Order__c = achOrder != null ? achOrder.id : null,
+                            SM_Fee_to_collect__c = feeToCollect,
+                            SM_Date__c = achOrder.SM_Next_Transaction_Date__c,
+                            SM_PrincipalContract__c = asset.Principal_Contract__c != null ? asset.Principal_Contract__c : null,
+                            Name = assetFeeType + '-' + (i + 1)
+                        )
+                    );
+                }
+            }
+        }
+
+        return assetsFeeToInsert;
+    }
 
     private void updateAssetsFee(List<SM_ACH_Order__c> newRecords, Map<Id, SObject> oldRecordsMap) {
         Map<String, SM_ACH_Order__c> achOrdersByContractId = new Map<String, SM_ACH_Order__c>();
         // Map<String, SM_ACH_Order__c> achOrdersByContractId = new Map<String, SM_ACH_Order__c>();
-
+        Set<String> idsContract = new Set<String>();
         for (SM_ACH_Order__c achOrder : newRecords) {
-            if (SM_Utils.isChangedField(achOrder, oldRecordsMap.get(achOrder.Id), 'SM_Fee_to_collect__c')) achOrdersByContractId.put(achOrder.SM_Contract__c, achOrder);
+            if (SM_Utils.isChangedField(achOrder, oldRecordsMap.get(achOrder.Id), 'SM_Fee_to_collect__c')){
+                achOrdersByContractId.put(achOrder.SM_Contract__c, achOrder);
+                idsContract.add(achOrder.SM_Contract__c);
+            }
+        }
+        // CJ 06/08/2022 SMMCI-27
+        for(Contract ctr : [SELECT id, (SELECT ID,Collection_Main_Contract__c,Principal_Contract__c FROM Contracts1__r) FROM Contract WHERE ID IN: idsContract ]){
+            if(!ctr.Contracts1__r.isEmpty()){
+               for(Contract ctr1: ctr.Contracts1__r){
+                   if(ctr1.Collection_Main_Contract__c == SM_ContractHelper.collectionMain.READY_FOR_COLLECTION){
+                      SM_ACH_Order__c achOrder = achOrdersByContractId.get(ctr1.Principal_Contract__c);
+                      achOrdersByContractId.put(ctr1.id,achOrder);
+                   }
+               }
+            }
         }
         if (!achOrdersByContractId.isEmpty()) {
             List<SM_Asset_Fee__c> assetsFeeToUpdate = new List<SM_Asset_Fee__c>();
             List<SM_Asset_Fee__c> assetsFeeToDisable = new List<SM_Asset_Fee__c>();
             Map<String, Decimal> amountAssetsFeeByACHOrderId = new Map<String, Decimal>();
             Map<String, String> contractIdByACHOrderId = new Map<String, String>();
-            for (SM_Asset_Fee__c assetFee : [SELECT Id, SM_Amount__c, SM_Contract__c, SM_ACH_Order__c, SM_Fee_to_collect__c, SM_Date__c, SM_Type__c, SM_Position__c FROM SM_Asset_Fee__c WHERE SM_Contract__c IN :achOrdersByContractId.keySet()]) {
+            for (SM_Asset_Fee__c assetFee : [SELECT Id, SM_Amount__c, SM_Contract__c, SM_PrincipalContract__c, SM_ACH_Order__c, SM_Fee_to_collect__c, SM_Date__c, SM_Type__c, SM_Position__c FROM SM_Asset_Fee__c WHERE SM_Contract__c IN :achOrdersByContractId.keySet()]) {
                 Decimal amount = 0;
-                if (assetFee.SM_Type__c == 'Subscription' || assetFee.SM_Position__c == achOrdersByContractId.get(assetFee.SM_Contract__c).SM_Fee_to_collect__c) {
+                SM_ACH_Order__c achOrder = assetFee.SM_PrincipalContract__c != null && achOrdersByContractId.containsKey(assetFee.SM_PrincipalContract__c) ? achOrdersByContractId.get(assetFee.SM_PrincipalContract__c) :
+                achOrdersByContractId.get(assetFee.SM_Contract__c);
+                if (assetFee.SM_Type__c == 'Subscription' || assetFee.SM_Position__c == achOrder.SM_Fee_to_collect__c) {
                     assetFee.SM_Fee_to_collect__c = true;
-                    assetFee.SM_Date__c = achOrdersByContractId.get(assetFee.SM_Contract__c).SM_Next_Transaction_Date__c;
+                    assetFee.SM_Date__c = achOrder.SM_Next_Transaction_Date__c;
                     assetsFeeToUpdate.add(assetFee);
                     // JSPA - 06/02/2021 Pasar a after insert para los ach order que cumplan la condicion (SM_Payment_Type__c != AC)
                     // contractIdByACHOrderId.put(assetFee.SM_ACH_Order__c, assetFee.SM_Contract__c);
@@ -128,7 +243,7 @@ public without sharing class SM_ACHOrderHandler extends SM_TriggerHandler{
                     if (!amountAssetsFeeByACHOrderId.containsKey(assetFee.SM_ACH_Order__c)) amountAssetsFeeByACHOrderId.put(assetFee.SM_ACH_Order__c, 0);
                     amountAssetsFeeByACHOrderId.put(assetFee.SM_ACH_Order__c, amountAssetsFeeByACHOrderId.get(assetFee.SM_ACH_Order__c) + amount);
                 }
-                if (assetFee.SM_Type__c != 'Subscription' && assetFee.SM_Position__c != achOrdersByContractId.get(assetFee.SM_Contract__c).SM_Fee_to_collect__c && assetFee.SM_Fee_to_collect__c == true) {
+                if (assetFee.SM_Type__c != 'Subscription' && assetFee.SM_Position__c != achOrder.SM_Fee_to_collect__c && assetFee.SM_Fee_to_collect__c == true) {
                     assetFee.SM_Fee_to_collect__c = false;
                     assetsFeeToDisable.add(assetFee);
                 }
@@ -470,6 +585,33 @@ public without sharing class SM_ACHOrderHandler extends SM_TriggerHandler{
                 newAch.SM_Next_Transaction_Date__c = companybusinessDay.newDate;  
                 newAch.SM_Payment_End_Date__c = companybusinessDay.newDate; 
              }
+        }
+    }
+
+    /**
+    * @description This methos check change status to clone payments
+    * @author Diego Jacanamijoy -> djacanamijoy@legal-credit.com | 05/08/2022 
+    * @param newRecords 
+    * @param oldRecordsMap 
+    **/
+    private static void checkPaymentStatus(List<SM_ACH_Order__c> newRecords, Map<Id, SObject> oldRecordsMap){
+
+        List<SM_ACH_Order__c> achsToValidate = new List<SM_ACH_Order__c>();
+
+        for (SM_ACH_Order__c newAch : newRecords) {
+
+            SM_ACH_Order__c oldAch= (SM_ACH_Order__c) oldRecordsMap.get(newAch.Id);
+
+            if ( SM_Utils.isChangedField(newAch, oldAch, 'SM_Payment_Status__c') && newAch.SM_Payment_Status__c == SM_ACHOrderHelper.paymentStatus.COMPLETED
+                && newAch.SM_Payment_Type__c == SM_ACHOrderHelper.paymentType.AC)
+            {
+                achsToValidate.add(newAch);
+            }
+        }
+
+        /** Check ach ids to validate */
+        if (!achsToValidate.isEmpty()) {
+           new SM_AcPaymentToDependentContract(achsToValidate);
         }
     }
 }

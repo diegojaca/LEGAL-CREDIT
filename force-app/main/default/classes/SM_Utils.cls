@@ -3,7 +3,7 @@
  * @author            : diego.jacanamijoy@gmail.com
  * @group             : 
 9 * @last modified on  : 01-18-2021
- * @last modified by  : Diego Jacanamijoy -> diego.jacanamijoy@gmail.es
+ * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * Modifications Log 
  * Ver   Date         Author                        Modification
  * 1.0   11-17-2020   diego.jacanamijoy@gmail.com   Initial Version
@@ -356,6 +356,33 @@ public with sharing class SM_Utils {
         
         return companybusinessDay;
    }
+
+    /**
+    * @description This method return all editable fields by sobect name
+    * @author Diego Jacanamijoy -> djacanamijoy@legal-credit.com | 05/08/2022 
+    * @param SObjectName 
+    * @return List<String> 
+    **/
+    public static List<String> getAllEditableFieldsBySObject(String SObjectName){
+
+        List<String> fields = new List<String>();
+
+        Map<String, SObjectField> fieldsMap = Schema.describeSObjects(new List<String>{
+            SObjectName
+        }).get(0).fields.getMap();
+
+        for (String fieldName : fieldsMap.keySet()) {
+            
+            DescribeFieldResult fieldDescribe = fieldsMap.get(fieldName).getDescribe();
+
+            if (fieldDescribe.isUpdateable()) {
+                fields.add(fieldDescribe.getName());
+            }
+        }
+
+        return fields;
+    }
+
  /**
      * @description This class gets the business day
      * @author cjimenez@legal-credit.com | 06-11-2021 
@@ -366,4 +393,6 @@ public with sharing class SM_Utils {
         public Date newDate  {get;set;}
         public String changeDetail {get;set;}
     }
+
+
 }

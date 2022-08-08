@@ -2,8 +2,8 @@
  * @description       :
  * @author            : Jonathan S. Pachon Ariza -> jpachon@legal-credit.com
  * @group             :
- * @last modified on  : 09-22-2021
- * @last modified by  : Jonathan S. Pachon Ariza -> jpachon.ariza@gmail.com
+ * @last modified on  : 05/08/2022
+ * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * Modifications Log
  * Ver   Date         Author                                                 Modification
  * 1.0   05-15-2021   Jonathan S. Pachon Ariza -> jpachon@legal-credit.com   Initial Version
@@ -52,7 +52,8 @@ public without sharing class SM_ChargentOrderHandler extends SM_TriggerHandler{
         processErrorChargentOrders(Trigger.newMap, Trigger.oldMap);
         //SFDCMP-389
         updatePenaltyDate(Trigger.newMap, Trigger.oldMap);
-        
+        //SMMCI-28
+        checkPaymentStatus(Trigger.new, Trigger.oldMap);
     }
 
 
@@ -78,7 +79,19 @@ public without sharing class SM_ChargentOrderHandler extends SM_TriggerHandler{
     **/
     public static Map<Id,List<SM_Asset_Fee__c>> createAssetFeesProcess(List<String> contractIds){
         // Get assets by contract ids
-        List<Asset> assetsToProcess = [SELECT Id, SM_Contract__c, Product2.SM_Plan_Months__c, Product2.SM_Way_to_pay__c, Product2.SM_Monthly_Offer__c FROM Asset WHERE SM_Contract__c IN :contractIds AND Price > 0 AND SM_Chargent_Order__c = null];
+        // CJ 06/08/2022 SMMCI-27
+        Set<String> idsContract = new Set<String>();
+        idsContract.addAll(contractIds);
+        for(Contract ctr : [SELECT id, (SELECT  id, Principal_Contract__c, SM_Contract__r.Contract_activation_form__c,SM_Contract__c,SM_Contract__r.Collection_Main_Contract__c FROM Assets1__r ) FROM Contract WHERE ID IN: contractIds ]){
+            if(!ctr.Assets1__r.isEmpty()){
+                for(Asset asset: ctr.Assets1__r)
+                    if(asset.SM_Contract__r.Contract_activation_form__c == SM_ContractHelper.collectionActivationForm.INMEDIATE_ACTIVATION
+                      && asset.SM_Contract__r.Collection_Main_Contract__c == SM_ContractHelper.collectionMain.READY_FOR_COLLECTION){
+                        idsContract.add(asset.SM_Contract__c);
+                    }
+            }
+        }
+        List<Asset> assetsToProcess = [SELECT Id, SM_Contract__c,Principal_Contract__c, Product2.SM_Plan_Months__c, Product2.SM_Way_to_pay__c, Product2.SM_Monthly_Offer__c FROM Asset WHERE SM_Contract__c IN :idsContract AND Price > 0 AND SM_Chargent_Order__c = null];
         List<Asset> assetToUpdate = new List<Asset>();
         Map<Id,List<SM_Asset_Fee__c>> assetsFeeToInsert = new Map<Id,List<SM_Asset_Fee__c>>();
         SM_Asset_Fee__c assetFee;
@@ -102,6 +115,7 @@ public without sharing class SM_ChargentOrderHandler extends SM_TriggerHandler{
                     feeToCollect = false;
                 }
                 if(!assetsFeeToInsert.containsKey(asset.SM_Contract__c)){
+                    // CJ SMMCI-10 25/07/2022
                     assetsFeeToInsert.put(
                     	asset.SM_Contract__c,
                     	new List<SM_Asset_Fee__c>{
@@ -114,6 +128,7 @@ public without sharing class SM_ChargentOrderHandler extends SM_TriggerHandler{
                                 SM_Status__c = 'Scheduled',
                                 //SM_Chargent_Order__c = chargentOrderId,
                                 SM_Fee_to_collect__c = feeToCollect,
+                                SM_PrincipalContract__c = asset.Principal_Contract__c != null ? asset.Principal_Contract__c : null,
                                 Name = assetFeeType + '-' + (i + 1)
                         	)
                         }
@@ -130,6 +145,7 @@ public without sharing class SM_ChargentOrderHandler extends SM_TriggerHandler{
                             SM_Status__c = 'Scheduled',
                             //SM_Chargent_Order__c = chargentOrderId,
                             SM_Fee_to_collect__c = feeToCollect,
+                            SM_PrincipalContract__c = asset.Principal_Contract__c != null ? asset.Principal_Contract__c : null,
                             Name = assetFeeType + '-' + (i + 1)
                         )
                     );
@@ -149,6 +165,87 @@ public without sharing class SM_ChargentOrderHandler extends SM_TriggerHandler{
         }*/
         return assetsFeeToInsert;
     }
+    /**
+    * @description This method create asset fees and update the asset with chargent order record
+    * @author Cjimenez | 02/08/2022
+    * @param contractIds,achOrderIdByContractId
+    **/
+    public static Map<Id,List<SM_Asset_Fee__c>> createAssetFeesProcess(List<String> contractIds,Map<String,ChargentOrders__ChargentOrder__c> achOrderIdByContractId){
+        // Get assets by contract ids
+        Map<String,Asset> ctrIdsByAsset = new Map<String,Asset>();
+        List<Asset> assetsToProcess = [SELECT Id,Product2.SM_Requires_AC__c,SM_Contract__c,Principal_Contract__c, Product2.SM_Plan_Months__c, Product2.SM_Way_to_pay__c, Product2.SM_Monthly_Offer__c FROM Asset WHERE SM_Contract__c IN :contractIds AND Price > 0 AND SM_Chargent_Order__c = null];
+        
+        Map<Id,List<SM_Asset_Fee__c>> assetsFeeToInsert = new Map<Id,List<SM_Asset_Fee__c>>();
+        SM_Asset_Fee__c assetFee;
+        for (Asset asset : assetsToProcess) {
+            //String chargentOrderId = chargentOrderByContractId.get(asset.SM_Contract__c);
+            Decimal qtyOfAssetsFeeToCreate = 0;
+            Boolean feeToCollect = false;
+            String assetFeeType = '';
+            if (asset.Product2.SM_Way_to_pay__c == 'Subscription') {
+                qtyOfAssetsFeeToCreate = 1;
+                assetFeeType = 'Subscription';
+            }
+            // CJ SMMCI-23 27/07/2022
+            if (asset.Product2.SM_Way_to_pay__c == 'Fix Term') {
+                qtyOfAssetsFeeToCreate = asset.Product2.SM_Plan_Months__c;
+                assetFeeType = 'Fee';
+            }
+             // CJ SMMCI-10 25/07/2022
+            ChargentOrders__ChargentOrder__c chargentOrd = achOrderIdByContractId.containsKey(asset.Principal_Contract__c) ? achOrderIdByContractId.get(asset.Principal_Contract__c) : null;
+            Decimal position = 0; 
+            if(chargentOrd != null)
+               position = asset.Product2.SM_Requires_AC__c == true ? chargentOrd.SM_Fee_to_collect__c : chargentOrd.SM_Fee_to_collect__c + 1;
+            for (Decimal i = position; i < qtyOfAssetsFeeToCreate; i++) {
+                if ((assetFeeType == 'Subscription') || (assetFeeType == 'Fee' && i == 0)) {
+                    feeToCollect = true;
+                } else {
+                    feeToCollect = false;
+                }
+                if(!assetsFeeToInsert.containsKey(asset.SM_Contract__c)){
+                    // CJ SMMCI-10 25/07/2022
+                    assetsFeeToInsert.put(
+                    	asset.SM_Contract__c,
+                    	new List<SM_Asset_Fee__c>{
+                            new SM_Asset_Fee__c(
+                                SM_Asset__c = asset.id,
+                                SM_Position__c = i + 1,
+                                SM_Type__c = assetFeeType,
+                                SM_Amount__c = asset.Product2.SM_Monthly_Offer__c,
+                                SM_Contract__c = asset.SM_Contract__c,
+                                SM_Status__c = 'Scheduled',
+                                SM_Chargent_Order__c = chargentOrd != null ? chargentOrd.id : null,
+                                SM_Fee_to_collect__c = feeToCollect,
+                                SM_Date__c = chargentOrd.ChargentOrders__Payment_Start_Date__c,
+                                SM_PrincipalContract__c = asset.Principal_Contract__c != null ? asset.Principal_Contract__c : null,
+                                Name = assetFeeType + '-' + (i + 1)
+                        	)
+                        }
+                	);
+                }
+                else{
+                    assetsFeeToInsert.get(asset.SM_Contract__c).add(
+                        new SM_Asset_Fee__c(
+                            SM_Asset__c = asset.id,
+                            SM_Position__c = i + 1,
+                            SM_Type__c = assetFeeType,
+                            SM_Amount__c = asset.Product2.SM_Monthly_Offer__c,
+                            SM_Contract__c = asset.SM_Contract__c,
+                            SM_Status__c = 'Scheduled',
+                            SM_Chargent_Order__c = chargentOrd != null ? chargentOrd.id : null,
+                            SM_Fee_to_collect__c = feeToCollect,
+                            SM_Date__c = chargentOrd.ChargentOrders__Payment_Start_Date__c,
+                            SM_PrincipalContract__c = asset.Principal_Contract__c != null ? asset.Principal_Contract__c : null,
+                            Name = assetFeeType + '-' + (i + 1)
+                        )
+                    );
+                }
+            }
+        }
+
+        return assetsFeeToInsert;
+    }
+
 
     /**
     * @description This method update the payment day from Contract
@@ -487,6 +584,33 @@ public without sharing class SM_ChargentOrderHandler extends SM_TriggerHandler{
             }
         }
       }
+    }
+
+    /**
+    * @description This methos check change status to clone payments
+    * @author Diego Jacanamijoy -> djacanamijoy@legal-credit.com | 05/08/2022 
+    * @param newRecords 
+    * @param oldRecordsMap 
+    **/
+    private static void checkPaymentStatus(List<ChargentOrders__ChargentOrder__c> newRecords, Map<Id, SObject> oldRecordsMap){
+
+        List<ChargentOrders__ChargentOrder__c> chargentToValidate = new List<ChargentOrders__ChargentOrder__c>();
+
+        for (ChargentOrders__ChargentOrder__c newChargent : newRecords) {
+
+            ChargentOrders__ChargentOrder__c oldChargent= (ChargentOrders__ChargentOrder__c) oldRecordsMap.get(newChargent.Id);
+
+            if ( SM_Utils.isChangedField(newChargent, oldChargent, 'ChargentOrders__Payment_Status__c') && newChargent.ChargentOrders__Payment_Status__c == SM_ChargentOrderHelper.paymentStatus.COMPLETE
+                && newChargent.SM_Payment_Type__c == SM_ChargentOrderHelper.paymentType.AC)
+            {
+                chargentToValidate.add(newChargent);
+            }
+        }
+
+        /** Check chargents to validate */
+        if (!chargentToValidate.isEmpty()) {
+            new SM_AcPaymentToDependentContract(chargentToValidate);
+        }
     }
 
 }

@@ -2,7 +2,7 @@
  * @description       :
  * @author            : Jonathan S. Pachon Ariza -> jpachon@legal-credit.com
  * @group             :
- * @last modified on  : 01/08/2022
+ * @last modified on  : 03/08/2022
  * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * Modifications Log
  * Ver   Date         Author                                                 Modification
@@ -418,11 +418,11 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
             if (SM_Utils.isChangedField(newContract, (Contract)oldContractsMap.get(newContract.Id), 'Status') && statusToUpdateAssets.contains(newContract.Status)) {
                 
                 /** Add validation when change to Activate status */
-                if(newContract.Status <> SM_ContractHelper.status.ACTIVATED 
-                    || (newContract.Status == SM_ContractHelper.status.ACTIVATED && newContract.Collection_Main_Contract__c == SM_ContractHelper.collectionMain.READY_FOR_COLLECTION))
-                {
+                //if(newContract.Status <> SM_ContractHelper.status.ACTIVATED 
+                  //  || (newContract.Status == SM_ContractHelper.status.ACTIVATED && newContract.Collection_Main_Contract__c == SM_ContractHelper.collectionMain.READY_FOR_COLLECTION))
+                //{
                     contractStatusById.put(newContract.Id, newContract.Status);
-                }
+                //}
             }
         }
         if(!contractStatusById.isEmpty()){
@@ -980,14 +980,14 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
     public static void checkUpdateMasterStatus(List<Contract> newRecords, Map<Id, SObject> oldRecordsMap){
 
         Set<Id> masterContractIds = new Set<Id>();
+        List<String> validValuesToUpdate = new List<String>{SM_ContractHelper.status.ACTIVATED, SM_ContractHelper.status.PAYMENT_PROCESS, SM_ContractHelper.status.CANCELED, SM_ContractHelper.status.FINALIZED};
 
         for (Contract newCt : newRecords) {
             Contract oldCt = (Contract) oldRecordsMap.get(newCt.Id);
             /** Validate if change Status */
             if (SM_Utils.isChangedField(newCt, oldCt, 'Status') 
                 && newCt.Contract_Type__c == SM_ContractHelper.contractType.MASTER
-                && (newCt.Status == SM_ContractHelper.status.ACTIVATED
-                || newCt.Status == SM_ContractHelper.status.PAYMENT_PROCESS))
+                && validValuesToUpdate.contains(newCt.Status))
             {
                 masterContractIds.add(newCt.Id);
             }
