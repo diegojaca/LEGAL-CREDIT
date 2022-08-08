@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * @group             : 
- * @last modified on  : 05/08/2022
+ * @last modified on  : 08/08/2022
  * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
 **/
 public with sharing class SM_AcPaymentToDependentContract {
@@ -95,7 +95,7 @@ public with sharing class SM_AcPaymentToDependentContract {
 
         /** Get related contracts */
         for (Contract relatedContract : [SELECT 
-                                            Contract_Type__c, SM_Total_ac__c
+                                            Contract_Type__c, SM_Total_ac__c, SM_Charged_AC_Fees__c, SM_Failed_AC_Fees__c
                                             , (SELECT 
                                                     Id 
                                                 FROM Contracts1__r
@@ -118,45 +118,58 @@ public with sharing class SM_AcPaymentToDependentContract {
 
         /** Payment list to clone */
         List<SM_Payment__c> clonedPayments = new List<SM_Payment__c>();
+        /** Contracts to update */
+        List<Contract> dependentContractsToUpdate = new List<Contract>();
 
         for (Contract master : masterById.values()) {
-
-            /** Check if the amount of cuote is less or  greater of ttal AC of contract*/
-            //if (master.SM_Total_ac__c > payment.SM_Amount__c) {
                 
-                /** get AC dependent contracts and iterate them */
-                List<Contract> dependentContracts = masterById.get(master.Id).Contracts1__r;
+            /** get AC dependent contracts and iterate them */
+            List<Contract> dependentContracts = masterById.get(master.Id).Contracts1__r;
 
-                SM_Payment__c payment = paymentByMasterId.get(master.Id);
+            SM_Payment__c payment = paymentByMasterId.get(master.Id);
 
-                if (payment == null) {
-                    continue;
-                }
+            if (payment == null) {
+                continue;
+            }
 
-                /** values to cloned payments */
-                Decimal amountToDependent = dependentContracts.size() > 0 ? (payment.SM_Amount__c / dependentContracts.size()).setScale(2) : 0;
-                Decimal penaltyValueToDependent = dependentContracts.size() > 0 ? (payment.SM_Penalty_value__c / dependentContracts.size()).setScale(2) : 0;
-                Decimal feeValueToDependent = dependentContracts.size() > 0 ? (payment.SM_Fee_value__c / dependentContracts.size()).setScale(2) : 0;
+            /** values to cloned payments */
+            Decimal amountToDependent = dependentContracts.size() > 0 ? (payment.SM_Amount__c / dependentContracts.size()).setScale(2) : 0;
+            Decimal penaltyValueToDependent = dependentContracts.size() > 0 ? (payment.SM_Penalty_value__c / dependentContracts.size()).setScale(2) : 0;
+            Decimal feeValueToDependent = dependentContracts.size() > 0 ? (payment.SM_Fee_value__c / dependentContracts.size()).setScale(2) : 0;
+            Boolean acCollected = master.SM_Total_ac__c <= payment.SM_Amount__c;
+
+            for (Contract dependent : dependentContracts) {
                 
+                /** Clone payment from master, overrite amounts and related with dependent cntract*/
+                SM_Payment__c clonedPayment = payment.clone();
+                clonedPayment.SM_Amount__c = amountToDependent;
+                clonedPayment.SM_Contract__c = dependent.Id;
+                clonedPayment.SM_Penalty_value__c = penaltyValueToDependent;
+                clonedPayment.SM_Fee_value__c = feeValueToDependent;
 
-                for (Contract dependent : dependentContracts) {
-                    
-                    /** Clone payment from master, overrite amounts and related with dependent cntract*/
-                    SM_Payment__c clonedPayment = payment.clone();
-                    clonedPayment.SM_Amount__c = amountToDependent;
-                    clonedPayment.SM_Contract__c = dependent.Id;
-                    clonedPayment.SM_Penalty_value__c = penaltyValueToDependent;
-                    clonedPayment.SM_Fee_value__c = feeValueToDependent;
+                /** Update contract Ac audit data */
+                dependent.SM_Charged_AC_Fees__c = master.SM_Charged_AC_Fees__c;
+                dependent.SM_Failed_AC_Fees__c = master.SM_Failed_AC_Fees__c;
+                dependent.SM_Payment_Received__c = true;
+                dependent.SM_Charged_AC_Amount__c = amountToDependent;
+                dependent.SM_AC_collected__c = acCollected;
 
-                    /** Add clne to list to insert */
-                    clonedPayments.add(clonedPayment);
-                }
-            //}   
+                /** Add clne to list to insert */
+                clonedPayments.add(clonedPayment);
+
+                /** Add dependent to list to update */
+                dependentContractsToUpdate.add(dependent);
+            }
         }
 
         /** Insert cloned payments */
         if (!clonedPayments.isEmpty()) {
             insert clonedPayments;
+        }
+
+        /** Update dependent contracts */
+        if (!dependentContractsToUpdate.isEmpty()) {
+            update dependentContractsToUpdate;
         }
     }
 }
