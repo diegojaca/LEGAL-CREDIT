@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * @group             : 
- * @last modified on  : 08/08/2022
+ * @last modified on  : 11/08/2022
  * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
 **/
 public with sharing class SM_AcPaymentToDependentContract {
@@ -97,7 +97,7 @@ public with sharing class SM_AcPaymentToDependentContract {
         for (Contract relatedContract : [SELECT 
                                             Contract_Type__c, SM_Total_ac__c, SM_Charged_AC_Fees__c, SM_Failed_AC_Fees__c
                                             , (SELECT 
-                                                    Id 
+                                                    SM_Total_ac__c , SM_AC_Split_Date__c
                                                 FROM Contracts1__r
                                                 WHERE Collection_Main_Contract__c =: SM_ContractHelper.collectionMain.READY_FOR_COLLECTION
                                                 AND SM_Requires_AC_Payment__c = true) 
@@ -139,6 +139,8 @@ public with sharing class SM_AcPaymentToDependentContract {
             Boolean acCollected = master.SM_Total_ac__c <= payment.SM_Amount__c;
 
             for (Contract dependent : dependentContracts) {
+
+                amountToDependent = dependent.SM_AC_Split_Date__c <> null ? amountToDependent : dependent.SM_Total_ac__c;
                 
                 /** Clone payment from master, overrite amounts and related with dependent cntract*/
                 SM_Payment__c clonedPayment = payment.clone();
@@ -146,6 +148,8 @@ public with sharing class SM_AcPaymentToDependentContract {
                 clonedPayment.SM_Contract__c = dependent.Id;
                 clonedPayment.SM_Penalty_value__c = penaltyValueToDependent;
                 clonedPayment.SM_Fee_value__c = feeValueToDependent;
+                clonedPayment.SM_ACH_Order__c = null;
+                clonedPayment.SM_Chargent_Orders_Transaction__c = null;
 
                 /** Update contract Ac audit data */
                 dependent.SM_Charged_AC_Fees__c = master.SM_Charged_AC_Fees__c;
