@@ -2,8 +2,8 @@
  * @description       :
  * @author            : Jonathan S. Pachon Ariza -> jpachon.ariza@gmail.com
  * @group             :
- * @last modified on  : 06-03-2022
- * @last modified by  : Jonathan S. Pachon Ariza -> jpachon.ariza@gmail.com
+ * @last modified on  : 16/08/2022
+ * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * Modifications Log
  * Ver   Date         Author                                                 Modification
  * 1.0   04-08-2021   Jonathan S. Pachon Ariza -> jpachon.ariza@gmail.com   Initial Version
@@ -26,6 +26,10 @@ public without sharing class SM_PaymentHandler extends SM_TriggerHandler{
         updateContractInfo(Trigger.new);
          //SFDCMP-352
          processRejectedPaymentsChargentOrder(Trigger.newMap, Trigger.oldMap);
+         // SMMCI-36
+        upsertInvoiceByPayment(Trigger.new);
+        // SMMCI-29
+        clonePayments(Trigger.new, null);
     }
 
     override public void beforeUpdate(){
@@ -38,7 +42,8 @@ public without sharing class SM_PaymentHandler extends SM_TriggerHandler{
         updateRelatedRecordsByPaymentStatusUpdates(Trigger.new, Trigger.oldMap);
         // SFDCMP-351
         processRejectedPayments(Trigger.newMap, Trigger.oldMap);
-
+        // SMMCI-29
+        clonePayments(Trigger.new, Trigger.oldMap);
     }
 
     /************* Auxiliar methods *************/
@@ -50,6 +55,55 @@ public without sharing class SM_PaymentHandler extends SM_TriggerHandler{
             if (availablePaymentStatusToSendReceipt.contains(newPayment.Payment_Status__c)) {
                 newPayment.SM_Receipt_Status__c = SM_PaymentHelper.receiptStatus.PENDING_TO_SEND;
             }
+        }
+    }
+
+    /**
+    * @description This method set Installment_number__c when create Payment
+    * @author Diego Jacanamijoy -> djacanamijoy@legal-credit.com | 10/08/2022 
+    * @param newRecords 
+    **/
+    private void upsertInvoiceByPayment(List<SM_Payment__c> newRecords) {
+
+        Set<Id> validaPayments = new Set<Id>();//Payment ids to validate
+
+        /** Check if payment type <> AC */
+        for (SM_Payment__c payment : newRecords) {
+            
+            if (payment.SM_Type__c <> 'AC') {
+                validaPayments.add(payment.Id);
+            }
+        }
+
+        if (!validaPayments.isEmpty()) {
+            new SM_UpsertInvoiceByPayment(validaPayments);
+        }
+    }
+
+    /**
+    * @description 
+    * @author Diego Jacanamijoy -> djacanamijoy@legal-credit.com | 16/08/2022 
+    * @param newRecords 
+    * @param oldRecordsMap 
+    **/
+    private void clonePayments(List<SM_Payment__c> newRecords, Map<Id, SObject> oldRecordsMap) {
+
+        Set<Id> paymentIds = new Set<Id>();//Ids to validate
+        
+        for (SM_Payment__c newPayment : newRecords) {
+
+            /** Check change status or new record */
+            SM_Payment__c oldPayment = (SM_Payment__c)oldRecordsMap?.get(newPayment.Id);
+            Boolean changeStatusOrNew = oldPayment == null || SM_Utils.isChangedField(newPayment, oldPayment, 'Payment_Status__c');
+
+            if (newPayment.Payment_Status__c == SM_PaymentHelper.status.ACCEPTED) {
+                paymentIds.add(newPayment.Id);
+            }
+        }
+        
+        /** Check payment ids to validate */
+        if (!paymentIds.isEmpty()) {
+            new SM_AcPaymentToDependentContract(paymentIds);
         }
     }
 

@@ -7,6 +7,7 @@
 		<members>SM_ChargentOrderHandler</members>
 		<members>SM_ContractHandler</members>
 		<members>SM_ContractHandlerTest</members>
+		<members>SM_PaymentHandler</members>
 		<members>SM_Utils</members>
 		<name>ApexClass</name>
 	</types>

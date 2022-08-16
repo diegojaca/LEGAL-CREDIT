@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * @group             : 
- * @last modified on  : 11/08/2022
+ * @last modified on  : 16/08/2022
  * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
 **/
 public with sharing class SM_AcPaymentToDependentContract {
@@ -13,11 +13,11 @@ public with sharing class SM_AcPaymentToDependentContract {
     /**
     * @description Constructor
     * @author Diego Jacanamijoy -> djacanamijoy@legal-credit.com | 03/08/2022 
-    * @param object SM_ACH_Order__c or ChargentOrders__ChargentOrder__c
+    * @param object Set<Id> paymentIds
     **/
-    public SM_AcPaymentToDependentContract(SObject[] sobjects) {
+    public SM_AcPaymentToDependentContract(Set<Id> paymentIds) {
 
-        getRelatedPayment(sobjects);
+        getPaymentData(paymentIds);
     }
 
     /**
@@ -25,60 +25,29 @@ public with sharing class SM_AcPaymentToDependentContract {
     * @author Diego Jacanamijoy -> djacanamijoy@legal-credit.com | 05/08/2022 
     * @param so 
     **/
-    private void getRelatedPayment(SObject[] sobjects){
+    private void getPaymentData(Set<Id> paymentIds){
 
         /** get all editable fields of payment object */
         String allEditablePaymentFields = String.join(SM_Utils.getAllEditableFieldsBySObject(SM_Payment__c.getSObjectType().getDescribe().getName()), ',');
         Set<Id> contractIds = new Set<Id>();
+        String MASTER_CONTRACT_TYPE = SM_ContractHelper.contractType.MASTER;
+        String AC_TYPE = SM_ACHOrderHelper.paymentType.AC;
 
-        /** Check sobject type passed */
-        if(SM_Utils.getSObjectNameById((Id)sobjects[0].get('Id')) == SM_ACH_Order__c.getSObjectType().getDescribe().getName()){
+        /** get related payment with all editable fields */
+        String paymentQuery = 'SELECT {0}, SM_Contract__c '
+        + 'FROM SM_Payment__c '
+        + 'WHERE Id IN: paymentIds '
+        + 'AND SM_Contract__r.Contract_Type__c =: MASTER_CONTRACT_TYPE '
+        + 'AND SM_Type__c =: AC_TYPE';
 
-            Set<Id> achIds = new Set<Id>();
+        for (SM_Payment__c payment : Database.query(String.format(paymentQuery, new List<String>{allEditablePaymentFields}))) {
             
-            for (SObject achOrder: sobjects) {
-                achIds.add((Id)achOrder.get('Id'));
-                contractIds.add((Id)achorder.get('SM_Contract__c'));
-            }
-            
-            
-            /** Get related contracts */
-            buildMasterContractMap(contractIds);
-            
-            /** get related payment with all editable fields */
-            String paymentQuery = 'SELECT SM_Contract__c, {0} FROM SM_Payment__c WHERE SM_ACH_Order__c IN: achIds ORDER BY Createddate DESC';
-
-            /** Build payment by master map */
-            for (SM_Payment__c payment : Database.query(String.format(paymentQuery, new List<String>{allEditablePaymentFields}))) {
-
-                if (masterById.containsKey(payment.SM_Contract__c)) {
-                    paymentByMasterId.put(payment.SM_Contract__c, payment);    
-                }
-                
-            }
-
-        }else if(SM_Utils.getSObjectNameById((Id)sobjects[0].get('Id')) == ChargentOrders__ChargentOrder__c.getSObjectType().getDescribe().getName()){
-
-            Set<Id> chargenIds = new Set<Id>();
-            
-            for (SObject chargen: sobjects) {
-                chargenIds.add((Id)chargen.get('Id'));
-                contractIds.add((Id)chargen.get('Contract__c'));
-            }
-
-            /** Get related contracts */
-            buildMasterContractMap(contractIds);
-
-            /** get related payment with all editable fields */
-            String chargenTransactionQuery = 'SELECT Contract__c, (SELECT SM_Contract__c, {0} FROM Payments__r ORDER BY Createddate DESC) FROM ChargentOrders__Transaction__c WHERE ChargentOrders__Order__c IN: chargenIds';
-
-            for (ChargentOrders__Transaction__c chargTransaction : Database.query(String.format(chargenTransactionQuery, new List<String>{allEditablePaymentFields}))) {
-                
-                if (masterById.containsKey(chargTransaction.Contract__c)) {
-                    paymentByMasterId.put(chargTransaction.Contract__c, chargTransaction.Payments__r[0]);
-                }
-            }
+            contractIds.add(payment.SM_Contract__c);
+            paymentByMasterId.put(payment.SM_Contract__c, payment);
         }
+
+        /** Get related contracts */
+        buildMasterContractMap(contractIds);
 
         /** Check related payment to continue proccess */
         if (!paymentByMasterId.isEmpty()) {
@@ -102,8 +71,7 @@ public with sharing class SM_AcPaymentToDependentContract {
                                                 WHERE Collection_Main_Contract__c =: SM_ContractHelper.collectionMain.READY_FOR_COLLECTION
                                                 AND SM_Requires_AC_Payment__c = true) 
                                         FROM Contract 
-                                        WHERE Id IN: masterIds
-                                        AND Contract_Type__c =: SM_ContractHelper.contractType.MASTER]) 
+                                        WHERE Id IN: masterIds]) 
         {
 
             masterById.put(relatedContract.Id, relatedContract);
@@ -133,14 +101,14 @@ public with sharing class SM_AcPaymentToDependentContract {
             }
 
             /** values to cloned payments */
-            Decimal amountToDependent = dependentContracts.size() > 0 ? (payment.SM_Amount__c / dependentContracts.size()).setScale(2) : 0;
             Decimal penaltyValueToDependent = dependentContracts.size() > 0 ? (payment.SM_Penalty_value__c / dependentContracts.size()).setScale(2) : 0;
             Decimal feeValueToDependent = dependentContracts.size() > 0 ? (payment.SM_Fee_value__c / dependentContracts.size()).setScale(2) : 0;
             Boolean acCollected = master.SM_Total_ac__c <= payment.SM_Amount__c;
 
             for (Contract dependent : dependentContracts) {
 
-                amountToDependent = dependent.SM_AC_Split_Date__c <> null ? amountToDependent : dependent.SM_Total_ac__c;
+                Decimal splitAmount = dependent.SM_Total_ac__c > 0 ? (dependent.SM_Total_ac__c / 2).setScale(2) : 0;
+                Decimal amountToDependent = dependent.SM_AC_Split_Date__c <> null ? splitAmount : dependent.SM_Total_ac__c;
                 
                 /** Clone payment from master, overrite amounts and related with dependent cntract*/
                 SM_Payment__c clonedPayment = payment.clone();

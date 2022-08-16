@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * @group             : 
- * @last modified on  : 05/08/2022
+ * @last modified on  : 16/08/2022
  * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
 **/
 @IsTest
@@ -10,6 +10,8 @@ public with sharing class SM_AcPaymentToDependentContractTest {
     
     @TestSetup
     static void makeData(){
+
+        insert new SM_Bypasser__c(SM_Disable_Validation_Rules__c = false, SetupOwnerId = UserInfo.getProfileId());
 
         /** Insert Account */
         Account account = SM_TestSmartDataFactory.getPersonAccount();
@@ -45,7 +47,8 @@ public with sharing class SM_AcPaymentToDependentContractTest {
                 Contract_activation_form__c = 'Immediate activation	',
                 SM_Requires_AC_Payment__c = true,
                 SM_Payment_day__c = 5,
-                SM_Frecuency__c = 'Monthly'
+                SM_Frecuency__c = 'Monthly',
+                SM_Total_ac__c = 20
             ));
         }
 
@@ -72,12 +75,13 @@ public with sharing class SM_AcPaymentToDependentContractTest {
             SM_Contract__c = master.Id,
             SM_ACH_Order__c = achOrder.Id,
             SM_Penalty_value__c = 10.68,
-            SM_Fee_value__c = 10.68
+            SM_Fee_value__c = 10.68,
+            SM_Type__c = 'AC'
         );
         insert masterPayment;
 
         Test.startTest();
-            SM_AcPaymentToDependentContract paymentToDependent = new SM_AcPaymentToDependentContract(new List<SObject>{achOrder});
+            SM_AcPaymentToDependentContract paymentToDependent = new SM_AcPaymentToDependentContract(new Set<Id>{masterPayment.Id});
         Test.stopTest();
 
         List<Contract> dependentContracts = [SELECT 
@@ -95,7 +99,166 @@ public with sharing class SM_AcPaymentToDependentContractTest {
         /** Check data from dependent payments */
         for (SM_Payment__c dependentPayment : dependentPayments) {
 
-            System.assertEquals((masterPayment.SM_Amount__c / 5).setScale(2), dependentPayment.SM_Amount__c, 'Incorrect value to SM_Amount__c ');
+            System.assertEquals(20, dependentPayment.SM_Amount__c, 'Incorrect value to SM_Amount__c ');
+            System.assertEquals((masterPayment.SM_Penalty_value__c / 5).setScale(2), dependentPayment.SM_Penalty_value__c, 'Incorrect value to SM_Penalty_value__c ');
+            System.assertEquals((masterPayment.SM_Fee_value__c / 5).setScale(2), dependentPayment.SM_Fee_value__c, 'Incorrect value to SM_Fee_value__c ');
+        }
+
+    }
+
+    @IsTest
+    static void clonePaymentsByAchOrderInsertOk(){
+
+        Contract master = [SELECT SM_Total_ac__c FROM Contract WHERE Contract_Type__c = 'Master' limit 1];
+
+        /** Create ACH order */
+        SM_ACH_Order__c achOrder = new SM_ACH_Order__c(
+            SM_Contract__c = master.Id,
+            SM_Payment_Type__c = 'AC',
+            SM_Next_Transaction_Date__c=System.toDay()
+        );
+        insert achOrder;
+
+         /** Create payment to master */
+         SM_Payment__c masterPayment = new SM_Payment__c(
+            SM_Amount__c = 35,
+            SM_Contract__c = master.Id,
+            SM_ACH_Order__c = achOrder.Id,
+            SM_Penalty_value__c = 10.68,
+            SM_Fee_value__c = 10.68,
+            SM_Type__c = 'AC',
+            Payment_Status__c = SM_PaymentHelper.status.ACCEPTED
+        );
+
+        Test.startTest();
+            insert masterPayment;
+        Test.stopTest();
+
+        List<Contract> dependentContracts = [SELECT 
+                                                Id 
+                                            FROM Contract 
+                                            WHERE Contract_Type__c =: SM_ContractHelper.contractType.DEPENDENT 
+                                            AND Collection_Main_Contract__c =: SM_ContractHelper.collectionMain.READY_FOR_COLLECTION
+                                            AND SM_Requires_AC_Payment__c = true];
+
+        List<SM_Payment__c> dependentPayments = [SELECT SM_Amount__c, SM_Penalty_value__c, SM_Fee_value__c FROM SM_Payment__c WHERE SM_Contract__c <>: master.Id];                                    
+
+        System.assertEquals(5, dependentContracts.size(), 'Must be return 5 dependent contracts');
+        System.assertEquals(5, dependentPayments.size(), 'Must be return 5 paymentsa related to dependent contracts');
+
+        /** Check data from dependent payments */
+        for (SM_Payment__c dependentPayment : dependentPayments) {
+
+            System.assertEquals(20, dependentPayment.SM_Amount__c, 'Incorrect value to SM_Amount__c ');
+            System.assertEquals((masterPayment.SM_Penalty_value__c / 5).setScale(2), dependentPayment.SM_Penalty_value__c, 'Incorrect value to SM_Penalty_value__c ');
+            System.assertEquals((masterPayment.SM_Fee_value__c / 5).setScale(2), dependentPayment.SM_Fee_value__c, 'Incorrect value to SM_Fee_value__c ');
+        }
+
+    }
+
+    @IsTest
+    static void clonePaymentsByAchOrderUpdatetOk(){
+
+        Contract master = [SELECT SM_Total_ac__c FROM Contract WHERE Contract_Type__c = 'Master' limit 1];
+
+        /** Create ACH order */
+        SM_ACH_Order__c achOrder = new SM_ACH_Order__c(
+            SM_Contract__c = master.Id,
+            SM_Payment_Type__c = 'AC',
+            SM_Next_Transaction_Date__c=System.toDay()
+        );
+        insert achOrder;
+
+         /** Create payment to master */
+         SM_Payment__c masterPayment = new SM_Payment__c(
+            SM_Amount__c = 35,
+            SM_Contract__c = master.Id,
+            SM_ACH_Order__c = achOrder.Id,
+            SM_Penalty_value__c = 10.68,
+            SM_Fee_value__c = 10.68,
+            SM_Type__c = 'AC'
+        );
+        insert masterPayment;
+
+        Test.startTest();
+            masterPayment.Payment_Status__c = SM_PaymentHelper.status.ACCEPTED;
+            update masterPayment;
+        Test.stopTest();
+
+        List<Contract> dependentContracts = [SELECT 
+                                                Id 
+                                            FROM Contract 
+                                            WHERE Contract_Type__c =: SM_ContractHelper.contractType.DEPENDENT 
+                                            AND Collection_Main_Contract__c =: SM_ContractHelper.collectionMain.READY_FOR_COLLECTION
+                                            AND SM_Requires_AC_Payment__c = true];
+
+        List<SM_Payment__c> dependentPayments = [SELECT SM_Amount__c, SM_Penalty_value__c, SM_Fee_value__c FROM SM_Payment__c WHERE SM_Contract__c <>: master.Id];                                    
+
+        System.assertEquals(5, dependentContracts.size(), 'Must be return 5 dependent contracts');
+        System.assertEquals(5, dependentPayments.size(), 'Must be return 5 paymentsa related to dependent contracts');
+
+        /** Check data from dependent payments */
+        for (SM_Payment__c dependentPayment : dependentPayments) {
+
+            System.assertEquals(20, dependentPayment.SM_Amount__c, 'Incorrect value to SM_Amount__c ');
+            System.assertEquals((masterPayment.SM_Penalty_value__c / 5).setScale(2), dependentPayment.SM_Penalty_value__c, 'Incorrect value to SM_Penalty_value__c ');
+            System.assertEquals((masterPayment.SM_Fee_value__c / 5).setScale(2), dependentPayment.SM_Fee_value__c, 'Incorrect value to SM_Fee_value__c ');
+        }
+
+    }
+
+    @IsTest
+    static void clonePaymentsByAchOrderSplitDateOk(){
+
+        Contract master = [SELECT SM_Total_ac__c FROM Contract WHERE Contract_Type__c = 'Master' limit 1];
+
+        List<Contract> dependents = [SELECT SM_Total_ac__c FROM Contract WHERE Contract_Type__c = 'Dependent'];
+        for (Contract dependent : dependents) {
+            
+            dependent.SM_AC_Split_Date__c = System.today();
+        }
+
+        update dependents;
+
+        /** Create ACH order */
+        SM_ACH_Order__c achOrder = new SM_ACH_Order__c(
+            SM_Contract__c = master.Id,
+            SM_Payment_Type__c = 'AC',
+            SM_Next_Transaction_Date__c=System.toDay()
+        );
+        insert achOrder;
+
+         /** Create payment to master */
+         SM_Payment__c masterPayment = new SM_Payment__c(
+            SM_Amount__c = 35,
+            SM_Contract__c = master.Id,
+            SM_ACH_Order__c = achOrder.Id,
+            SM_Penalty_value__c = 10.68,
+            SM_Fee_value__c = 10.68,
+            SM_Type__c = 'AC'
+        );
+        insert masterPayment;
+
+        Test.startTest();
+            SM_AcPaymentToDependentContract paymentToDependent = new SM_AcPaymentToDependentContract(new Set<Id>{masterPayment.Id});
+        Test.stopTest();
+
+        List<Contract> dependentContracts = [SELECT 
+                                                Id 
+                                            FROM Contract 
+                                            WHERE Contract_Type__c =: SM_ContractHelper.contractType.DEPENDENT 
+                                            AND Collection_Main_Contract__c =: SM_ContractHelper.collectionMain.READY_FOR_COLLECTION
+                                            AND SM_Requires_AC_Payment__c = true];
+
+        List<SM_Payment__c> dependentPayments = [SELECT SM_Amount__c, SM_Penalty_value__c, SM_Fee_value__c FROM SM_Payment__c WHERE SM_Contract__c <>: master.Id];                                    
+
+        System.assertEquals(5, dependentContracts.size(), 'Must be return 5 dependent contracts');
+        System.assertEquals(5, dependentPayments.size(), 'Must be return 5 paymentsa related to dependent contracts');
+
+        /** Check data from dependent payments */
+        for (SM_Payment__c dependentPayment : dependentPayments) {
+
+            System.assertEquals(10, dependentPayment.SM_Amount__c, 'Incorrect value to SM_Amount__c ');
             System.assertEquals((masterPayment.SM_Penalty_value__c / 5).setScale(2), dependentPayment.SM_Penalty_value__c, 'Incorrect value to SM_Penalty_value__c ');
             System.assertEquals((masterPayment.SM_Fee_value__c / 5).setScale(2), dependentPayment.SM_Fee_value__c, 'Incorrect value to SM_Fee_value__c ');
         }
@@ -133,12 +296,13 @@ public with sharing class SM_AcPaymentToDependentContractTest {
             SM_Contract__c = master.Id,
             SM_Chargent_Orders_Transaction__c = chargentTransaction.Id,
             SM_Penalty_value__c = 10.68,
-            SM_Fee_value__c = 10.68
+            SM_Fee_value__c = 10.68,
+            SM_Type__c = 'AC'
         );
         insert masterPayment;
 
         Test.startTest();
-            SM_AcPaymentToDependentContract paymentToDependent = new SM_AcPaymentToDependentContract(new List<SObject>{chargent});
+            SM_AcPaymentToDependentContract paymentToDependent = new SM_AcPaymentToDependentContract(new Set<Id>{masterPayment.Id});
         Test.stopTest();
 
         List<Contract> dependentContracts = [SELECT 
@@ -156,7 +320,7 @@ public with sharing class SM_AcPaymentToDependentContractTest {
         /** Check data from dependent payments */
         for (SM_Payment__c dependentPayment : dependentPayments) {
 
-            System.assertEquals((masterPayment.SM_Amount__c / 5).setScale(2), dependentPayment.SM_Amount__c, 'Incorrect value to SM_Amount__c ');
+            System.assertEquals(20, dependentPayment.SM_Amount__c, 'Incorrect value to SM_Amount__c ');
             System.assertEquals((masterPayment.SM_Penalty_value__c / 5).setScale(2), dependentPayment.SM_Penalty_value__c, 'Incorrect value to SM_Penalty_value__c ');
             System.assertEquals((masterPayment.SM_Fee_value__c / 5).setScale(2), dependentPayment.SM_Fee_value__c, 'Incorrect value to SM_Fee_value__c ');
         }
