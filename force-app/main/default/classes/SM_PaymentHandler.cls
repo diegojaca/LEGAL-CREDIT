@@ -2,7 +2,7 @@
  * @description       :
  * @author            : Jonathan S. Pachon Ariza -> jpachon.ariza@gmail.com
  * @group             :
- * @last modified on  : 16/08/2022
+ * @last modified on  : 19/08/2022
  * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * Modifications Log
  * Ver   Date         Author                                                 Modification
@@ -70,7 +70,7 @@ public without sharing class SM_PaymentHandler extends SM_TriggerHandler{
         /** Check if payment type <> AC */
         for (SM_Payment__c payment : newRecords) {
             
-            if (payment.SM_Type__c <> 'AC') {
+            if (payment.SM_Type__c <> 'AC' && (payment.SM_ACH_Order__c <> null || payment.SM_Chargent_Orders_Transaction__c <> null)) {
                 validaPayments.add(payment.Id);
             }
         }
@@ -89,6 +89,7 @@ public without sharing class SM_PaymentHandler extends SM_TriggerHandler{
     private void clonePayments(List<SM_Payment__c> newRecords, Map<Id, SObject> oldRecordsMap) {
 
         Set<Id> paymentIds = new Set<Id>();//Ids to validate
+        String firstPaymentType;
         
         for (SM_Payment__c newPayment : newRecords) {
 
@@ -96,14 +97,25 @@ public without sharing class SM_PaymentHandler extends SM_TriggerHandler{
             SM_Payment__c oldPayment = (SM_Payment__c)oldRecordsMap?.get(newPayment.Id);
             Boolean changeStatusOrNew = oldPayment == null || SM_Utils.isChangedField(newPayment, oldPayment, 'Payment_Status__c');
 
-            if (newPayment.Payment_Status__c == SM_PaymentHelper.status.ACCEPTED) {
+            if (changeStatusOrNew && newPayment.Payment_Status__c == SM_PaymentHelper.status.ACCEPTED && (newPayment.SM_ACH_Order__c <> null || newPayment.SM_Chargent_Orders_Transaction__c <> null)) {
+                firstPaymentType = firstPaymentType == null ? newPayment.SM_Type__c : firstPaymentType;
                 paymentIds.add(newPayment.Id);
             }
         }
         
         /** Check payment ids to validate */
         if (!paymentIds.isEmpty()) {
-            new SM_AcPaymentToDependentContract(paymentIds);
+
+            /** Dependent type of fisrst record, call method to proccess */
+
+            if (firstPaymentType == SM_ACHOrderHelper.paymentType.AC) {
+
+                new SM_AcPaymentToDependentContract(paymentIds);
+            } else if (firstPaymentType == SM_ACHOrderHelper.paymentType.FEE || firstPaymentType == SM_ACHOrderHelper.paymentType.LATE_PAYMENT_TYPE) {
+
+                new SM_FeePaymentToDependentContract(paymentIds);
+            }
+            
         }
     }
 
