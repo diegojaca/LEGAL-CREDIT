@@ -2,7 +2,7 @@
  * @description       :
  * @author            : Jonathan S. Pachon Ariza -> jpachon.ariza@gmail.com
  * @group             :
- * @last modified on  : 16/08/2022
+ * @last modified on  : 22/08/2022
  * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * Modifications Log
  * Ver   Date         Author                                                 Modification
@@ -19,7 +19,9 @@ public without sharing class SM_ACHOrderHandler extends SM_TriggerHandler{
         // SFDCM-366 Update contract to Payment process when it doesn't have any ACH Orders
         updateContractStatus(Trigger.new);
         //CJ 17-11-2021 SMPII-76
-         insertNextScheduledPaymentDate(Trigger.new);
+        insertNextScheduledPaymentDate(Trigger.new);
+        //SMMCI-38
+        SM_PaymentHelper.setFeeToCollectFromFailetPayment(Trigger.new);
     }
 
     override public void afterInsert(){
@@ -129,7 +131,7 @@ public without sharing class SM_ACHOrderHandler extends SM_TriggerHandler{
     public static Map<Id,List<SM_Asset_Fee__c>> createAssetFeesProcess(List<String> contractIds,Map<String,SM_ACH_Order__c> achOrderIdByContractId){
         // Get assets by contract ids
         Map<String,Asset> ctrIdsByAsset = new Map<String,Asset>();
-        List<Asset> assetsToProcess = [SELECT Id,Price,Product2.SM_Requires_AC__c,SM_Contract__c,Principal_Contract__c, Product2.SM_Plan_Months__c, Product2.SM_Way_to_pay__c, Product2.SM_Monthly_Offer__c FROM Asset WHERE SM_Contract__c IN :contractIds AND Price > 0];
+        List<Asset> assetsToProcess = [SELECT Id,AC_Price__c,Price,Product2.SM_Requires_AC__c,SM_Contract__c,Principal_Contract__c, Product2.SM_Plan_Months__c, Product2.SM_Way_to_pay__c, Product2.SM_Monthly_Offer__c FROM Asset WHERE SM_Contract__c IN :contractIds AND Price > 0];
         
         List<Asset> assetToUpdate = new List<Asset>();
         Map<Id,List<SM_Asset_Fee__c>> assetsFeeToInsert = new Map<Id,List<SM_Asset_Fee__c>>();
@@ -151,9 +153,11 @@ public without sharing class SM_ACHOrderHandler extends SM_TriggerHandler{
              // CJ SMMCI-10 25/07/2022
             SM_ACH_Order__c achOrder = achOrderIdByContractId.containsKey(asset.Principal_Contract__c) ? achOrderIdByContractId.get(asset.Principal_Contract__c) : null;
             Decimal position = 0; 
+            Decimal acFee = 0;
             if(achOrder != null)
-               position = asset.Product2.SM_Requires_AC__c == true ? achOrder.SM_Fee_to_collect__c : achOrder.SM_Fee_to_collect__c + 1;
-               qtyOfAssetsFeeToCreate = qtyOfAssetsFeeToCreate + position;
+               acFee = asset.Product2.SM_Requires_AC__c == true ? 1 : 0;
+               position = asset.Product2.SM_Requires_AC__c == true ? achOrder.SM_Fee_to_collect__c : achOrder.SM_Fee_to_collect__c + 1; 
+               qtyOfAssetsFeeToCreate = qtyOfAssetsFeeToCreate + acFee + position ;
             for (Decimal i = position; i < qtyOfAssetsFeeToCreate; i++) {
                 if ((assetFeeType == 'Subscription') || (assetFeeType == 'Fee' )) {
                     feeToCollect = true;
@@ -168,8 +172,8 @@ public without sharing class SM_ACHOrderHandler extends SM_TriggerHandler{
                             new SM_Asset_Fee__c(
                                 SM_Asset__c = asset.id,
                                 SM_Position__c = i,
-                                SM_Type__c = assetFeeType,
-                                SM_Amount__c = asset.Principal_Contract__c != null ? asset.Price :  asset.Product2.SM_Monthly_Offer__c,
+                                SM_Type__c = asset.Product2.SM_Requires_AC__c == true ? 'Fee' : assetFeeType,
+                                SM_Amount__c = asset.Product2.SM_Requires_AC__c == true ? asset.AC_Price__c :  asset.Price,
                                 SM_Contract__c = asset.SM_Contract__c,
                                 SM_Status__c = 'Scheduled',
                                 SM_ACH_Order__c = achOrder != null ? achOrder.id : null,

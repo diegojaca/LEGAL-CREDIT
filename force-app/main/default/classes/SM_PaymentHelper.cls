@@ -2,8 +2,8 @@
  * @description       :
  * @author            : Jonathan S. Pachon Ariza -> jpachon@legal-credit.com
  * @group             :
- * @last modified on  : 19/07/2021g
- * @last modified by  : Diego Jacanamijoy -> diego.jacanamijoy@gmail.es
+ * @last modified on  : 22/08/2022
+ * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * Modifications Log
  * Ver   Date         Author                                                 Modification
  * 1.0   03-27-2021   Jonathan S. Pachon Ariza -> jpachon@legal-credit.com   Initial Version
@@ -213,6 +213,82 @@ public without sharing class SM_PaymentHelper {
             insert payments;
         }
         return payments;
+    }
+
+    /**
+    * @description This method set field SM_Fee_to_collect__c in ACh order or Chergent records of type Late payment fee
+    * @author Diego Jacanamijoy -> djacanamijoy@legal-credit.com | 22/08/2022 
+    * @param sObjects 
+    **/
+    public static void setFeeToCollectFromFailetPayment(SObject[] sObjects) {
+
+        Set<String> failedPaymentIds = new Set<String>();
+        map<String, SObject> sobjectByPayment = new Map<String, SObject>();
+
+        /** Iterate and validate new records */
+        for (SObject so : sObjects) {
+            
+            String paymentType = (String)so.get('SM_Payment_Type__c');
+            String failedPayment = (String)so.get('SM_Failed_Payment__c');
+
+            /** Validate payment type and related payment failed */
+            if (String.isNotBlank(paymentType) && paymentType == SM_ACHOrderHelper.paymentType.LATE_PAYMENT_TYPE && failedPayment <> null) {
+                
+                /** Payment ids to query */
+                failedPaymentIds.add(failedPayment);
+
+                /** Map for related later the Installment_number__c field */
+                sobjectByPayment.put((String)so.get('SM_Failed_Payment__c'), so);
+            }
+        }
+
+        for (SM_Payment__c payment : [SELECT Installment_number__c FROM SM_Payment__c WHERE Id IN: failedPaymentIds]) {
+            
+            sobjectByPayment.get(payment.Id).put('SM_Fee_to_collect__c', payment.Installment_number__c);
+        }
+    }
+
+    /**
+    * @description This method get PaymentWrapper records
+    * @author Diego Jacanamijoy -> djacanamijoy@legal-credit.com | 10/08/2022 
+    * @param paymentIds 
+    * @return List<PaymentWrapper> 
+    **/
+    public static List<PaymentWrapper> getPaymentWrappers(Set<Id> paymentIds){
+
+        /** Instance of PaymentWrapper */
+        List<PaymentWrapper> paymenWrappers = new List<PaymentWrapper>();
+
+        for (SM_Payment__c payment : [SELECT 
+                                        SM_P_IVU_State_Amount__c, SM_P_IVU_Municipal_Amount__c, SM_Type__c, SM_Failed_payment__c, Payment_Status__c, Installment_number__c, SM_Payment_Method__c
+                                        , SM_Payment_Date__c, SM_Contract__c, SM_Contract__r.ContractNumber, SM_Contract__r.SM_Email_to_send_contract__c, SM_Amount__c, SM_Penalty_value__c, SM_Fee_value__c
+                                        , SM_ACH_Order__r.SM_Fee_to_collect__c, SM_ACH_Order__r.SM_User_who_applies_the_penalty__c, SM_ACH_Order__r.SM_Apply_penalty__c, SM_ACH_Order__r.SM_Penalty_date__c
+                                        , SM_ACH_Order__r.SM_Approval_status__c, SM_ACH_Order__r.SM_Reason_to_approve_exoneration__c, SM_ACH_Order__r.SM_Payment_Start_Date__c, SM_ACH_Order__r.SM_Payment_Type__c
+                                        , SM_Chargent_Orders_Transaction__r.ChargentOrders__Order__r.SM_Fee_to_collect__c, SM_Chargent_Orders_Transaction__r.ChargentOrders__Order__r.SM_User_Who_Applies_Discount__c 
+                                        , SM_Chargent_Orders_Transaction__r.ChargentOrders__Order__r.SM_Penalty_date__c, SM_Chargent_Orders_Transaction__r.ChargentOrders__Order__r.SM_Approval_status__c
+                                        , SM_Chargent_Orders_Transaction__r.ChargentOrders__Order__r.ChargentOrders__Payment_Start_Date__c, SM_Chargent_Orders_Transaction__r.ChargentOrders__Order__r.SM_Payment_Type__c
+                                        , SM_Chargent_Orders_Transaction__r.ChargentOrders__Order__r.SM_Apply_penalty__c, SM_Chargent_Orders_Transaction__r.ChargentOrders__Order__r.SM_Reason_to_approve_exoneration__c
+                                    FROM SM_Payment__c 
+                                    WHERE Id =: paymentIds]) {
+
+            SObject relatedObj = payment.SM_Chargent_Orders_Transaction__r <> null ? (SObject)payment.SM_Chargent_Orders_Transaction__r.ChargentOrders__Order__r : (SObject)payment.SM_ACH_Order__r;
+            paymenWrappers.add(new PaymentWrapper(payment, relatedObj));
+        }
+
+        return paymenWrappers;
+    }
+
+    /** Wrapper Payment with ACH order or Chargent */
+    public class PaymentWrapper {
+
+        public SM_Payment__c payment;
+        public SObject achOrChargentObj;//Instance of ACH order or Chargent
+
+        public PaymentWrapper(SM_Payment__c payment, SObject achOrChargentObj){
+
+            this.payment = payment;
+            this.achOrChargentObj = achOrChargentObj;
+        }
     }
 
 
