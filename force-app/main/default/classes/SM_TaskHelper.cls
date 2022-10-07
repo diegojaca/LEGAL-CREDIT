@@ -1,15 +1,16 @@
 /**
- * @description       : 
+ * @description       :
  * @author            : Jonathan S. Pachon Ariza -> jpachon@legal-credit.com
- * @group             : 
- * @last modified on  : 01-18-2021
- * @last modified by  : Jonathan S. Pachon Ariza -> jpachon@legal-credit.com
- * Modifications Log 
+ * @group             :
+ * @last modified on  : 10-02-2022
+ * @last modified by  : Jonathan S. Pachon (JSPA)
+ * Modifications Log
  * Ver   Date         Author                                                 Modification
  * 1.0   01-15-2021   Jonathan S. Pachon Ariza -> jpachon@legal-credit.com   Initial Version
 **/
 public without sharing class SM_TaskHelper {
 
+    private static String processRT = SM_Utils.getRecordTypeIdByDeveloperName('Task', 'Process');
     public static RecordTypeEnum recordType = new RecordTypeEnum();
     public static StatusEnum status = new StatusEnum();
 
@@ -24,4 +25,16 @@ public without sharing class SM_TaskHelper {
         public String open = 'Open';
         public String completed = 'Completed';
     }
+
+    public static void createTaskToValidateErrorInUpgradedContract(String description) {
+        Task taskToValidateError = new Task(
+            OwnerId = UserInfo.getUserId(),
+            Status = SM_TaskHelper.status.open,
+            RecordTypeId = processRT,
+            Priority = 'High',
+            Description = description
+        );
+        insert taskToValidateError;
+    }
+
 }

@@ -2,8 +2,8 @@
  * @description       : 
  * @author            : diego.jacanamijoy@gmail.com
  * @group             : 
- * @last modified on  : 11-27-2020
- * @last modified by  : diego.jacanamijoy@gmail.com
+ * @last modified on  : 07/10/2022
+ * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * Modifications Log 
  * Ver   Date         Author                        Modification
  * 1.0   11-19-2020   diego.jacanamijoy@gmail.com   Initial Version
@@ -12,6 +12,7 @@
 public without sharing virtual class SM_TriggerHandler {
 
     public SM_Trigger_Panel__mdt triggerpanel;//Instance of metadata
+    public static Boolean avoidAllHandlerExcecution = false;
 
     
     /**
@@ -55,7 +56,7 @@ public without sharing virtual class SM_TriggerHandler {
     @SuppressWarnings('PMD.CyclomaticComplexity')
     public void run() {
         // dispatch to the correct handler method
-        if(Trigger.isExecuting && triggerpanel <> null){
+        if(Trigger.isExecuting && triggerpanel <> null && !avoidAllHandlerExcecution){
             if(triggerpanel.SM_ProcessOnBeforeInsert__c && Trigger.isInsert && Trigger.isBefore) {
                 this.beforeInsert();
                 this.asyncBeforeInsert();

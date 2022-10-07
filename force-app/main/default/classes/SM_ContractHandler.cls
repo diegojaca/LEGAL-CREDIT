@@ -2,7 +2,7 @@
  * @description       :
  * @author            : Jonathan S. Pachon Ariza -> jpachon@legal-credit.com
  * @group             :
- * @last modified on  : 03/08/2022
+ * @last modified on  : 07/10/2022
  * @last modified by  : Diego Jacanamijoy -> djacanamijoy@legal-credit.com
  * Modifications Log
  * Ver   Date         Author                                                 Modification
@@ -52,6 +52,9 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
         SM_ValidateDependentContracts.checkReadyForCollectionContracts(Trigger.new, Trigger.oldMap);
         // SMMCI-28
         checkUpdateMasterStatus(Trigger.new, Trigger.oldMap);
+        // CJ 14/08/2022 SMMCI-28 
+        updateContractFutureActivation(Trigger.new, Trigger.oldMap);
+
     }
 
     override public void beforeUpdate() {
@@ -79,6 +82,8 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
     override public void asyncAfterUpdate(){
         //DAJC 12/05/2021
         validatContractChangeStatus(Trigger.new, Trigger.oldMap);
+        // SMCCI-52
+        processRecordsToCancelUpgradedContracts(Trigger.new, Trigger.oldMap);
     }
 
     /************* Auxiliar methods *************/
@@ -93,17 +98,29 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
         Map<String, Contract> contractsByIds = new Map<String, Contract>();
         List<Contract> contractsToUpdate = new List<Contract>();
         Map<Id,Contact> contactsToInsertPerContract = new Map<Id,Contact>();
-        Map<Id,Contract> contractsAddressInfo = new Map<Id,Contract>(
-            [
-                SELECT Id, SM_Billing_Address__r.Address,SM_Billing_Address__r.City,
-                    SM_Billing_Address__r.Country,SM_Billing_Address__r.PostalCode,
-                    SM_Billing_Address__r.State,SM_Email_to_send_contract__c,
-                    Account.FirstName,Account.LastName,SM_Billing_Address__r.Street,
-                    Billing_Contact__c
-                FROM Contract
-                WHERE Id in: newContracts.keySet()
-            ]
-        );
+        List<String> lstIdsContract = new List<String>();
+        // CJ 24/08/2022 error 101 querys
+        for(Contract newContract : (List<Contract>)newContracts.values()) {
+            if(!isInsert &&  SM_Utils.isChangedField(newContract, (Contract)oldContractsMap.get(newContract.Id), 'SM_Billing_Address__c') &&
+            newContract.SM_Billing_Address__c!= Null
+            || isInsert && newContract.SM_Billing_Address__c!= Null) {
+                lstIdsContract.add(newContract.id);
+            }
+        }
+        Map<Id,Contract> contractsAddressInfo = null;
+        if(!lstIdsContract.isEmpty()){
+            contractsAddressInfo = new Map<Id,Contract>(
+                [
+                    SELECT Id, SM_Billing_Address__r.Address,SM_Billing_Address__r.City,
+                        SM_Billing_Address__r.Country,SM_Billing_Address__r.PostalCode,
+                        SM_Billing_Address__r.State,SM_Email_to_send_contract__c,
+                        Account.FirstName,Account.LastName,SM_Billing_Address__r.Street,
+                        Billing_Contact__c
+                    FROM Contract
+                    WHERE Id in: lstIdsContract
+                ]
+            );
+        }
         for(Contract newContract : (List<Contract>)newContracts.values()) {
             if (!isInsert &&
                     SM_Utils.isChangedField(newContract, (Contract)oldContractsMap.get(newContract.Id), 'SM_Billing_Address__c') &&
@@ -181,6 +198,7 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
             database.updateAsync((List<SObject>)orders);
         }
     }
+
     /**
     * @description This method process the contracts to create pdf and send via Adobe Sign
     * @author jpachon@legal-credit.com | 02-02-2021
@@ -191,19 +209,28 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
 
         Map<String, Contract> contractsByIds = new Map<String, Contract>();
         Map<String, String> disputeStatusByContractId = new  Map<String, String>();
+
+        /** Valid status to send dependent contracts */
         List<String> validStatusToSendPDF = new List<String>{SM_ContractHelper.status.ACTIVATED, SM_ContractHelper.status.PAYMENT_PROCESS};
 
         for (Contract newContract : newContracts) {
+
               Contract oldContract = (contract) oldContractsMap.get(newContract.Id);
-            if((validStatusToSendPDF.contains(newContract.Status) && newContract.Contract_Type__c == SM_ContractHelper.contractType.DEPENDENT)
-                ||(newContract.SM_Agreement_Status__c == null
-                    && ((SM_Utils.isChangedField(newContract, oldContract, 'SM_Send_Agreement__c') && newContract.SM_Send_Agreement__c )
-                    || (SM_Utils.isChangedField(newContract, oldContract, 'SM_Payment_Received__c') && newContract.SM_Payment_Received__c ) ) )  ) {
-                // contractByIds.add(newContract.Id);
+
+              Boolean isChangeSendAgreement = (SM_Utils.isChangedField(newContract, oldContract, 'SM_Send_Agreement__c') && newContract.SM_Send_Agreement__c );
+              Boolean isChangePaymentReceived = (SM_Utils.isChangedField(newContract, oldContract, 'SM_Payment_Received__c') && newContract.SM_Payment_Received__c );
+              Boolean isChangeStatus = (SM_Utils.isChangedField(newContract, oldContract, 'Status') && validStatusToSendPDF.contains(newContract.Status));
+
+            /** FIX: Dependent contracts send PDF when change status, other contracts send with old validations */
+            if((newContract.SM_Agreement_Status__c == null && (isChangeSendAgreement || isChangePaymentReceived) && newContract.Contract_Type__c <> SM_ContractHelper.contractType.DEPENDENT)
+                || (isChangeStatus && newContract.Contract_Type__c == SM_ContractHelper.contractType.DEPENDENT && String.isBlank(newContract.SM_Agreement_Status__c))) 
+            {
+
                 contractsByIds.put(newContract.Id, newContract);
                 disputeStatusByContractId.put(newContract.Id, SM_DisputeHelper.status.PENDING);
             }
         }
+
         if (!contractsByIds.isEmpty()) {
             System.debug('SM_SendContractPDFQueueable - contractsByIds:  ' + contractsByIds);
             System.debug('Ready to execute queueable - SM_SendContractPDFQueueable');
@@ -244,31 +271,35 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
                 contractsToQuery.add(contract.Id);
             }
         }
-        AggregateResult[] assetPayemntTypesPerContract = [
-            SELECT Product2.SM_Way_to_pay__c WayToPay,SM_Contract__c Contract
-            FROM Asset
-            WHERE SM_Contract__c in:contractsToQuery
-            GROUP BY Product2.SM_Way_to_pay__c,SM_Contract__c
-        ];
-        Map<Id,Set<String>> waysToPayPerContract = new Map<Id,Set<String>>();
-        for(AggregateResult contractAmount: assetPayemntTypesPerContract){
-            String wayToPay = String.valueOf(contractAmount.get('WayToPay'));
-            Id ContractId = Id.valueOf(String.valueOf(contractAmount.get('Contract')));
-            if(waysToPayPerContract.containsKey(ContractId)){
-                waysToPayPerContract.get(ContractId).add(wayToPay);
+        // CJ 24/08/2022 error 101 querys
+        if(!contractsToQuery.isEmpty()){
+            AggregateResult[] assetPayemntTypesPerContract = [
+                SELECT Product2.SM_Way_to_pay__c WayToPay,SM_Contract__c Contract
+                FROM Asset
+                WHERE SM_Contract__c in:contractsToQuery
+                GROUP BY Product2.SM_Way_to_pay__c,SM_Contract__c
+            ];
+            Map<Id,Set<String>> waysToPayPerContract = new Map<Id,Set<String>>();
+            for(AggregateResult contractAmount: assetPayemntTypesPerContract){
+                String wayToPay = String.valueOf(contractAmount.get('WayToPay'));
+                Id ContractId = Id.valueOf(String.valueOf(contractAmount.get('Contract')));
+                if(waysToPayPerContract.containsKey(ContractId)){
+                    waysToPayPerContract.get(ContractId).add(wayToPay);
+                }
+                else{
+                    waysToPayPerContract.put(ContractId, new Set<String> {wayToPay});
+                }
             }
-            else{
-                waysToPayPerContract.put(ContractId, new Set<String> {wayToPay});
-            }
-        }
 
-        for(Id contractId : waysToPayPerContract.keySet()){
-            String paymentTypeTMP = waysToPayPerContract.get(contractId).iterator().next();
-            String FinalPaymentTYpe = paymentTypeTMP=='Fix Term'?'Dynamic':'Fixed';
-            String PaymentCondition = waysToPayPerContract.get(contractId).size()>1?'Dynamic':FinalPaymentTYpe;
-            contractsToUpdate.add(new Contract(Id=contractId,SM_Payment_Condition__c=PaymentCondition));
+            for(Id contractId : waysToPayPerContract.keySet()){
+                String paymentTypeTMP = waysToPayPerContract.get(contractId).iterator().next();
+                String FinalPaymentTYpe = paymentTypeTMP=='Fix Term'?'Dynamic':'Fixed';
+                String PaymentCondition = waysToPayPerContract.get(contractId).size()>1?'Dynamic':FinalPaymentTYpe;
+                contractsToUpdate.add(new Contract(Id=contractId,SM_Payment_Condition__c=PaymentCondition));
+            }
         }
-        update contractsToUpdate;
+          if(!contractsToUpdate.isEmpty())
+             update contractsToUpdate;
     }
     /**
      * @description This method to create dispute
@@ -531,11 +562,11 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
     private static List<Contract> getContractsById(Set<String> contractsIds){
         // SMPII-141 Subquery in ACH order modified to get Stopped records
         return [SELECT Id, SM_Opportunity__c,
-                    (SELECT Id FROM Assets__r),
-                    (SELECT Id FROM Disputes__r),
+                    (SELECT Id FROM Assets__r WHERE Status != 'Cancelled'),
+                    (SELECT Id FROM Disputes__r WHERE SM_Status__c != 'Cancelled'),
                     (SELECT Id FROM Chargent_Orders__r WHERE ChargentOrders__Payment_Status__c = 'Recurring'),
                     (SELECT Id FROM ACH_Orders__r   WHERE SM_Payment_Status__c IN ('Initiated','Pending','Created','Stopped')),
-                    (SELECT Id FROM Assets_Fee__r),
+                    (SELECT Id FROM Assets_Fee__r WHERE SM_Status__c != 'Canceled'),
                     (SELECT Id FROM echosign_dev1__R00N70000001hM2JEAU__r)
                     FROM Contract WHERE Id IN :contractsIds];
     }
@@ -960,7 +991,7 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
                 && newCt.Contract_activation_form__c == SM_ContractHelper.collectionActivationForm.FUTURE_ACTIVATION)
             {
                 /** Chek valid data to update status */
-                if (newCt.Expected_date_for_contract_activation__c < System.today()
+                if (newCt.Expected_date_for_contract_activation__c > System.today()
                     || newCt.Validation_of_conditions__c <> SM_ContractHelper.collectionValidationsConditions.MEETS_THE_CONDITIONS
                     || newCt.Start_assets_in_fee_number__c == null)
                 {
@@ -968,6 +999,32 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
                     newCt.addError(Label.FUTURE_ACTIVATION_WITH_CONDITIONS_ERROR_MESSAGE);
                 }
             }
+        }
+    }
+    /**
+    * @description 
+    * @author Camilo jimenez -> cjimenez@legal-credit.com | 14/08/2022 
+    * @param newRecords 
+    * @param oldRecordsMap 
+    **/
+    public static void updateContractFutureActivation(List<Contract> newRecords, Map<Id, SObject> oldRecordsMap){
+        List<Contract> lstUpdateContract = new List<Contract>();
+        for (Contract newCt : newRecords) {
+            Contract oldCt = (Contract) oldRecordsMap.get(newCt.Id);
+            /** Validate if change Status */
+            if (SM_Utils.isChangedField(newCt, oldCt, 'Status') 
+                && newCt.Status == SM_ContractHelper.status.COMPLETE_INFORMATION
+                && newCt.Contract_activation_form__c == SM_ContractHelper.collectionActivationForm.FUTURE_ACTIVATION)
+            {
+                lstUpdateContract.add(new Contract(id = newCt.id, Status = SM_ContractHelper.status.ACTIVATED,
+                                                    SM_Send_Agreement__c = true ));
+            }
+        }
+        if(!lstUpdateContract.isEmpty()){
+           SM_BypassManager.disableValidationRules();
+           List<Database.SaveResult> sr = Database.update(lstUpdateContract);
+           SM_BypassManager.enableValidationRules();
+           system.debug('sr'+sr);
         }
     }
 
@@ -980,6 +1037,8 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
     public static void checkUpdateMasterStatus(List<Contract> newRecords, Map<Id, SObject> oldRecordsMap){
 
         Set<Id> masterContractIds = new Set<Id>();
+        Set<Id> masterCanceledContractIds = new Set<Id>();
+
         List<String> validValuesToUpdate = new List<String>{SM_ContractHelper.status.ACTIVATED, SM_ContractHelper.status.PAYMENT_PROCESS, SM_ContractHelper.status.CANCELED, SM_ContractHelper.status.FINALIZED};
 
         for (Contract newCt : newRecords) {
@@ -989,8 +1048,17 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
                 && newCt.Contract_Type__c == SM_ContractHelper.contractType.MASTER
                 && validValuesToUpdate.contains(newCt.Status))
             {
-                masterContractIds.add(newCt.Id);
+                /** When change to Cancelled, call other procces */
+                if (newCt.Status == SM_ContractHelper.status.CANCELED) {
+                    masterCanceledContractIds.add(newCt.Id);
+                } else {
+                    masterContractIds.add(newCt.Id);   
+                }
             }
+        }
+
+        if(!masterCanceledContractIds.isEmpty()) {
+            System.enqueueJob(new SM_CancelMasterContractController(masterCanceledContractIds));
         }
 
         /** Get dependent contracts by master ids */
@@ -1007,7 +1075,33 @@ public without sharing class SM_ContractHandler extends SM_TriggerHandler {
 
         /** Update dependent contracts */
         if(!dependentContracts.isEmpty()){
+            
+            /** Disable validation rules to dependent contracts */
+            SM_BypassManager.disableValidationRules();
             update dependentContracts;
+            SM_BypassManager.enableValidationRules();
+        }
+    }
+
+    public static void processRecordsToCancelUpgradedContracts(List<Contract> newRecords, Map<Id, SObject> oldRecordsMap) {
+        // Set<Id> contractsToQuery = new Set<Id>();
+        // List<Contract> contractsToUpdate = new List<Contract>();
+        Map<String, String> opportunityIdsByContractId = new Map<String, String>();
+        Map<String, String> newContractByUpgraded = new Map<String, String>();
+        for(Contract contract: (List<Contract>)newRecords) {
+            System.debug('contract: ' + contract);
+            System.debug('oldRecordsMap: ' + oldRecordsMap.get(contract.Id));
+            if(SM_Utils.isChangedField(contract, oldRecordsMap.get(contract.Id), 'Status') && contract.Status == SM_ContractHelper.status.ACTIVATED){
+                if (!opportunityIdsByContractId.containsKey(contract.Id) && contract.SM_UpgradedContract__c != null) {
+                    opportunityIdsByContractId.put(contract.SM_UpgradedContract__c, contract.SM_Opportunity__c);
+                    newContractByUpgraded.put(contract.SM_UpgradedContract__c, contract.Id);
+                }
+            }
+        }
+        // SM_CancelContractController cancelUpgradedContractsController = new SM_CancelContractController(opportunityIdsByContractId, newContractByUpgraded);
+        // cancelUpgradedContractsController.execute();
+        if (!opportunityIdsByContractId.isEmpty()) {
+            System.enqueueJob(new SM_CancelContractController(opportunityIdsByContractId, newContractByUpgraded));
         }
     }
 
